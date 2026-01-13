@@ -11,8 +11,8 @@ newspaper3k
 lxml_html_clean
 celery
 redis
-sentence-transformers
-torch
+# sentence-transformers (Removed for Cloud Lite Mode)
+# torch (Removed for Cloud Lite Mode)
 python-multipart
 python-jose[cryptography]
 passlib[bcrypt]

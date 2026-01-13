@@ -1,6 +1,12 @@
 import logging
-import torch
-from sentence_transformers import SentenceTransformer, util
+try:
+    import torch
+    from sentence_transformers import SentenceTransformer, util
+except ImportError:
+    torch = None
+    SentenceTransformer = None
+    util = None
+
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
