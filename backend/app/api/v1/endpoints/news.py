@@ -1,10 +1,28 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.article import Article
+from app.services.scraper_v2 import SCRAPER_CONFIG
+from app.services.pipeline_v2 import run_premium_source_scrape
+import asyncio
 
 router = APIRouter()
+
+@router.post("/trigger-scrape")
+async def trigger_scrape(background_tasks: BackgroundTasks):
+    """
+    Manually trigger the news scraper in the background.
+    """
+    async def scrape_job():
+        for config in SCRAPER_CONFIG:
+            try:
+                print(f"Scraping {config['name']}...")
+                await asyncio.to_thread(run_premium_source_scrape, config)
+            except Exception as e:
+                print(f"Error scraping {config['name']}: {e}")
+
+    background_tasks.add_task(scrape_job)
+    return {"message": "Scraper started in background. Check back in 2 minutes!", "sources": len(SCRAPER_CONFIG)}
 
 def get_category_news(category: str, db: Session, limit: int = 50):
     return db.query(Article).filter(
