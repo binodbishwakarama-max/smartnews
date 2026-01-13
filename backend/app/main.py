@@ -4,14 +4,7 @@ from app.api.v1.routers import api_router
 from app.core.config import settings
 from app.api.v1.endpoints import news
 
-from app.db.session import engine, Base
-
 app = FastAPI(title=settings.PROJECT_NAME)
-
-@app.on_event("startup")
-async def startup_event():
-    # Create tables on startup
-    Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,31 +28,3 @@ def root():
         "docs": "/docs",
         "health": "/health"
     }
-
-from app.services.scraper_v2 import SCRAPER_CONFIG
-from app.services.pipeline_v2 import run_premium_source_scrape
-from fastapi import BackgroundTasks
-import asyncio
-
-@app.get("/init-db")
-def init_db_manual():
-    Base.metadata.create_all(bind=engine)
-    return {"status": "Tables Created"}
-
-@app.get("/force-scrape")
-async def force_scrape_root(background_tasks: BackgroundTasks):
-    async def job():
-        # Ensure tables exist
-        try:
-            Base.metadata.create_all(bind=engine)
-        except Exception as e:
-            print(f"DB Init Error: {e}")
-
-        for config in SCRAPER_CONFIG:
-            try:
-                print(f"Scraping {config['name']}...")
-                await asyncio.to_thread(run_premium_source_scrape, config)
-            except Exception as e:
-                print(e)
-    background_tasks.add_task(job)
-    return {"status": "Scraper Started (Root)"}
