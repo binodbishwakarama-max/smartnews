@@ -4,7 +4,14 @@ from app.api.v1.routers import api_router
 from app.core.config import settings
 from app.api.v1.endpoints import news
 
+from app.db.session import engine, Base
+
 app = FastAPI(title=settings.PROJECT_NAME)
+
+@app.on_event("startup")
+async def startup_event():
+    # Create tables on startup
+    Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
