@@ -41,9 +41,20 @@ from app.services.pipeline_v2 import run_premium_source_scrape
 from fastapi import BackgroundTasks
 import asyncio
 
+@app.get("/init-db")
+def init_db_manual():
+    Base.metadata.create_all(bind=engine)
+    return {"status": "Tables Created"}
+
 @app.get("/force-scrape")
 async def force_scrape_root(background_tasks: BackgroundTasks):
     async def job():
+        # Ensure tables exist
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception as e:
+            print(f"DB Init Error: {e}")
+
         for config in SCRAPER_CONFIG:
             try:
                 print(f"Scraping {config['name']}...")
