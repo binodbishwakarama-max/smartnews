@@ -1,0 +1,222 @@
+import os
+import logging
+from typing import Optional, List
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, validator
+from datetime import datetime, timedelta
+import asyncio
+
+from database import get_db, engine
+import models
+from jobs import init_db, run_scraper_loop
+from recommender import recommend_for_user, user_profile_vector
+from config import settings
+from middleware import limiter, RateLimitExceeded, _rate_limit_exceeded_handler
+from auth import get_password_hash, verify_password, create_access_token, get_current_user
+
+# Logging setup
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(settings.LOG_FILE) if os.path.exists(os.path.dirname(settings.LOG_FILE)) else logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Pydantic schemas
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=8)
+    
+    @validator('username')
+    def username_alphanumeric(cls, v):
+        if not v.replace('_', '').isalnum():
+            raise ValueError('Username must be alphanumeric')
+        return v
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class ArticleResponse(BaseModel):
+    id: int
+    title: str
+    content: Optional[str]
+    image: Optional[str]
+    author: Optional[str]
+    publish_date: datetime
+    source: str
+    url: str
+    category: Optional[str]
+    
+    class Config:
+        from_attributes = True
+
+app = FastAPI(
+    title=settings.API_TITLE,
+    version=settings.API_VERSION,
+    description="Production-grade AI-powered news aggregator",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# Add rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.get_allowed_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"Global error: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"}
+    )
+
+
+@app.get('/')
+@limiter.limit("100/minute")
+async def health_check(request: Request):
+    """Health check endpoint"""
+    return {'status': 'ok', 'service': 'Smart News Aggregator', 'version': '1.0.0'}
+
+
+# ============ AUTH ENDPOINTS ============
+@app.post('/auth/signup', response_model=Token, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/hour")
+async def signup(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
+    """Register a new user"""
+    # Check if user exists
+    existing_user = db.query(models.User).filter(models.User.username == user_data.username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    
+    # Create new user
+    hashed_password = get_password_hash(user_data.password)
+    new_user = models.User(username=user_data.username, password_hash=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Generate token
+    access_token = create_access_token(data={"sub": new_user.username})
+    logger.info(f"New user registered: {user_data.username}")
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.post('/auth/login', response_model=Token)
+@limiter.limit("10/minute")
+async def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db)):
+    """Login and get access token"""
+    user = db.query(models.User).filter(models.User.username == user_data.username).first()
+    if not user or not verify_password(user_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    access_token = create_access_token(data={"sub": user.username})
+    logger.info(f"User logged in: {user_data.username}")
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.get('/auth/me')
+async def get_current_user_info(current_user: models.User = Depends(get_current_user)):
+    """Get current user information"""
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "created_at": current_user.created_at
+    }
+
+
+@app.on_event('startup')
+async def startup_event():
+    """Initialize database and start background scraper"""
+    try:
+        logger.info('Initializing database...')
+        init_db()
+        interval = int(os.getenv('SCRAPE_INTERVAL_MIN', '30'))
+        logger.info(f'Starting background scraper (interval: {interval} min)...')
+        asyncio.create_task(run_scraper_loop(interval))
+        logger.info('Application startup complete')
+    except Exception as e:
+        logger.error(f'Startup error: {e}', exc_info=True)
+
+
+@app.get('/articles', response_model=List[ArticleResponse])
+@limiter.limit("60/minute")
+async def list_articles(request: Request, limit: int = 50, category: Optional[str] = None, db: Session = Depends(get_db)):
+    """Get articles with optional category filter"""
+    query = db.query(models.Article).filter(models.Article.is_clickbait == False)
+    if category:
+        query = query.filter(models.Article.category == category)
+    articles = query.order_by(models.Article.publish_date.desc()).limit(limit).all()
+    return articles
+
+
+@app.get('/categories')
+@limiter.limit("60/minute")
+async def categories(request: Request, db: Session = Depends(get_db)):
+    """Get all unique categories"""
+    cats = db.query(models.Article.category).distinct().all()
+    return [c[0] for c in cats if c[0]]
+
+
+@app.get('/recommendations')
+async def recommendations(user_id: int, limit: int = 10, current_user: models.User = Depends(get_current_user)):
+    """Get personalized recommendations (requires authentication)"""
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    recs = recommend_for_user(user_id, limit)
+    return [{'id': a.id, 'title': a.title, 'category': a.category, 'url': a.url} for a in recs]
+
+
+@app.get('/trending')
+@limiter.limit("60/minute")
+async def trending(request: Request, limit: int = 10, db: Session = Depends(get_db)):
+    """Get trending articles"""
+    q = db.query(models.Article).filter(models.Article.is_clickbait==False).order_by(models.Article.publish_date.desc()).limit(limit).all()
+    return [{'id': a.id, 'title': a.title, 'category': a.category, 'url': a.url} for a in q]
+
+
+@app.get('/user/history')
+async def user_history(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get user reading history (requires authentication)"""
+    items = db.query(models.Interaction).filter(models.Interaction.user_id==current_user.id).order_by(models.Interaction.timestamp.desc()).all()
+    return [{'article_id': i.article_id, 'clicked': i.clicked, 'liked': i.liked, 'read_seconds': i.read_seconds, 'timestamp': i.timestamp} for i in items]
+
+
+@app.get('/user/interests')
+async def user_interests(current_user: models.User = Depends(get_current_user)):
+    """Get user interest profile (requires authentication)"""
+    p = user_profile_vector(current_user.id)
+    return dict(p)
+
+
+@app.post('/scrape')
+async def admin_scrape(current_user: models.User = Depends(get_current_user)):
+    """Manually trigger scraping (admin only)"""
+    # In production, add role-based check here
+    asyncio.create_task(run_scraper_loop(0.0001))
+    logger.info(f"Manual scrape triggered by user {current_user.username}")
+    return {'status': 'scraping started'}

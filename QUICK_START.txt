@@ -1,0 +1,186 @@
+═══════════════════════════════════════════════════════════
+  SMART NEWS AGGREGATOR - QUICK START GUIDE
+═══════════════════════════════════════════════════════════
+
+✅ SERVER IS RUNNING: http://127.0.0.1:8000
+
+═══════════════════════════════════════════════════════════
+  STEP 1: VIEW API DOCUMENTATION
+═══════════════════════════════════════════════════════════
+
+Open in browser:
+  http://127.0.0.1:8000/docs
+
+This shows all 7 API endpoints with interactive testing.
+
+═══════════════════════════════════════════════════════════
+  STEP 2: VIEW FRONTEND DASHBOARD  
+═══════════════════════════════════════════════════════════
+
+Open file in browser:
+  d:\smartnews\frontend\index.html
+
+Shows:
+  • Latest articles from all sources
+  • Category filters  
+  • Trending news
+  • Personalized recommendations
+
+═══════════════════════════════════════════════════════════
+  STEP 3: TEST API ENDPOINTS
+═══════════════════════════════════════════════════════════
+
+PowerShell commands:
+
+# Get all articles
+Invoke-RestMethod http://127.0.0.1:8000/articles
+
+# Get categories
+Invoke-RestMethod http://127.0.0.1:8000/categories
+
+# Get trending  
+Invoke-RestMethod http://127.0.0.1:8000/trending
+
+# Get recommendations
+Invoke-RestMethod http://127.0.0.1:8000/recommendations?user_id=1
+
+═══════════════════════════════════════════════════════════
+  AUTOMATED TEST
+═══════════════════════════════════════════════════════════
+
+cd d:\smartnews
+.\.venv\Scripts\activate
+python test_api.py
+
+═══════════════════════════════════════════════════════════
+  HOW IT WORKS
+═══════════════════════════════════════════════════════════
+
+1. Scraper runs automatically every 30 minutes
+2. Articles are scraped from 5 news sources:
+   • BBC
+   • CNN  
+   • Times of India
+   • The Verge
+   • Hacker News
+
+3. Each article is processed:
+   ✓ Duplicate detection (TF-IDF similarity)
+   ✓ Topic classification (7 categories)
+   ✓ Clickbait filtering
+   ✓ Stored in SQLite database
+
+4. API serves:
+   ✓ Filtered, categorized articles
+   ✓ Personalized recommendations
+   ✓ Trending non-clickbait news
+   ✓ User analytics
+
+═══════════════════════════════════════════════════════════
+  WHAT'S INCLUDED
+═══════════════════════════════════════════════════════════
+
+✅ Backend:
+   • FastAPI REST API
+   • SQLite database
+   • Background scraping job
+   • ML models (topic + clickbait)
+   • Recommendation engine
+
+✅ ML Models (Trained):
+   • Topic classifier (7 categories)
+   • Clickbait detector
+   • Duplicate detector
+
+✅ Frontend:
+   • Responsive dashboard
+   • Real-time updates
+   • Category filtering
+
+✅ Documentation:
+   • README.md - Full documentation
+   • PROJECT_STATUS.md - Status overview
+   • This file - Quick start
+
+═══════════════════════════════════════════════════════════
+  DATABASE LOCATION
+═══════════════════════════════════════════════════════════
+
+d:\smartnews\backend\smartnews.db
+
+Tables:
+  • articles - All scraped news
+  • users - User accounts  
+  • interactions - Clicks, likes, read time
+
+═══════════════════════════════════════════════════════════
+  RESTART SERVER
+═══════════════════════════════════════════════════════════
+
+If you need to restart:
+
+Method 1: Double-click
+  start_server.bat
+
+Method 2: Manual
+  cd d:\smartnews
+  .\.venv\Scripts\activate
+  cd backend
+  python -m uvicorn app:app --host 127.0.0.1 --port 8000
+
+═══════════════════════════════════════════════════════════
+  STOP SERVER
+═══════════════════════════════════════════════════════════
+
+Press CTRL+C in the server terminal
+
+Or kill all Python processes:
+Get-Process python | Stop-Process -Force
+
+═══════════════════════════════════════════════════════════
+  PROJECT STRUCTURE
+═══════════════════════════════════════════════════════════
+
+d:\smartnews\
+├── backend/           Backend code + database
+│   ├── app.py        FastAPI application
+│   ├── ml/           ML models + training
+│   └── smartnews.db  SQLite database
+├── frontend/          Web dashboard
+├── .venv/            Python environment
+├── test_api.py       API testing
+└── *.md              Documentation
+
+═══════════════════════════════════════════════════════════
+  PRODUCTION TIPS
+═══════════════════════════════════════════════════════════
+
+For production deployment:
+
+1. Switch to PostgreSQL
+   DATABASE_URL=postgresql://user:pass@host/db
+
+2. Add authentication (JWT)
+
+3. Use Redis for caching
+
+4. Deploy with Docker
+   docker-compose up
+
+5. Add monitoring (Sentry, DataDog)
+
+6. Scale workers (Gunicorn + Uvicorn)
+
+7. Add rate limiting
+
+8. Use CDN for static files
+
+═══════════════════════════════════════════════════════════
+
+🎉 PROJECT IS READY TO USE!
+
+Server running at: http://127.0.0.1:8000
+Documentation: http://127.0.0.1:8000/docs
+Frontend: frontend/index.html
+
+═══════════════════════════════════════════════════════════
