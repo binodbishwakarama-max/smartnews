@@ -28,3 +28,20 @@ def root():
         "docs": "/docs",
         "health": "/health"
     }
+
+from app.services.scraper_v2 import SCRAPER_CONFIG
+from app.services.pipeline_v2 import run_premium_source_scrape
+from fastapi import BackgroundTasks
+import asyncio
+
+@app.get("/force-scrape")
+async def force_scrape_root(background_tasks: BackgroundTasks):
+    async def job():
+        for config in SCRAPER_CONFIG:
+            try:
+                print(f"Scraping {config['name']}...")
+                await asyncio.to_thread(run_premium_source_scrape, config)
+            except Exception as e:
+                print(e)
+    background_tasks.add_task(job)
+    return {"status": "Scraper Started (Root)"}
