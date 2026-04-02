@@ -1,9 +1,10 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from app.db.session import get_db
 from app.models.article import Article
+from app.core.limiter import limiter
 
 router = APIRouter()
 

@@ -8,7 +8,7 @@ export function NewsCard({ article, horizontal = false, dense = false }: { artic
         return (
             <article className="group flex gap-6 items-start py-6 border-b border-border relative">
                 <div className="news-image-wrap w-24 h-24 flex-shrink-0 bg-muted">
-                    <img src={article.image_url || ''} alt="" loading="lazy" />
+                    <img src={article.image_url || ''} alt={article.title || 'News image'} loading="lazy" />
                 </div>
                 <div className="flex flex-col gap-1 flex-1">
                     <div className="flex justify-between items-start">
@@ -29,7 +29,7 @@ export function NewsCard({ article, horizontal = false, dense = false }: { artic
     return (
         <article className={`group flex flex-col gap-4 ${!dense ? 'pb-8 border-b border-border' : ''} relative`}>
             <div className="news-image-wrap aspect-[16/9] bg-muted relative">
-                <img src={article.image_url || ''} alt={article.title} loading="lazy" />
+                <img src={article.image_url || ''} alt={article.title || 'News image'} loading="lazy" />
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <BookmarkButton article={article} className="bg-white/90 dark:bg-black/80 backdrop-blur-sm rounded-full shadow-lg" />
                 </div>
@@ -61,10 +61,10 @@ export function NewsCard({ article, horizontal = false, dense = false }: { artic
 
 export function LeadStory({ article }: { article: Article }) {
     return (
-        <section className="group py-8 border-b-2 border-black mb-12">
+        <section className="group py-8 border-b-2 border-brand mb-12">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 <div className="lg:col-span-8 news-image-wrap aspect-[16/9] shadow-inner relative">
-                    <img src={article.image_url || ''} alt={article.title} loading="eager" />
+                    <img src={article.image_url || ''} alt={article.title || 'Lead story image'} loading="eager" />
                     <div className="absolute top-4 right-4 z-10">
                         <BookmarkButton article={article} className="bg-white/90 dark:bg-black/80 backdrop-blur-sm p-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
@@ -85,7 +85,7 @@ export function LeadStory({ article }: { article: Article }) {
                         {article.summary || "High-priority analysis on today's defining global event. Our editorial team has flagged this development for immediate attention."}
                     </p>
                     <div className="flex items-center gap-4 text-[11px] font-black uppercase tracking-widest pt-4">
-                        <div className="px-2 py-1 bg-black text-white">{article.source}</div>
+                        <div className="px-2 py-1 bg-brand text-background dark:text-black">{article.source}</div>
                         <span>{formatDate(article.publish_date)}</span>
                     </div>
                 </div>

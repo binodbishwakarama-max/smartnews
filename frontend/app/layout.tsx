@@ -1,22 +1,46 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { Suspense } from 'react';
+import Header from "../components/Header";
 import "./globals.css";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { BookmarkProvider } from "../contexts/BookmarkContext";
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: '--font-playfair'
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: '--font-inter'
-});
+import { AuthProvider } from "../contexts/AuthContext";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 export const metadata: Metadata = {
   title: "Smart News | Global Newsroom",
   description: "Next-generation AI-powered journalism for the modern world.",
+  openGraph: {
+    title: "Smart News | Global Newsroom",
+    description: "Next-generation AI-powered journalism for the modern world.",
+    url: "https://smartnews.example.com/",
+    siteName: "Smart News",
+    images: [
+      {
+        url: "https://smartnews.example.com/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Smart News - Global Newsroom",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@smartnews",
+    title: "Smart News | Global Newsroom",
+    description: "Next-generation AI-powered journalism for the modern world.",
+    images: ["https://smartnews.example.com/og-image.jpg"],
+  },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -25,14 +49,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${playfair.variable} ${inter.variable} font-sans`}>
-        <ThemeProvider>
-          <BookmarkProvider>
-            {children}
-          </BookmarkProvider>
-        </ThemeProvider>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <body className="font-sans">
+          <AuthProvider>
+            <ThemeProvider>
+              <BookmarkProvider>
+                <ErrorBoundary>
+                  <Suspense fallback={<div className="h-24 bg-muted animate-pulse border-b-2 border-black" />}>
+                    <Header />
+                  </Suspense>
+                  <main role="main">{children}</main>
+                </ErrorBoundary>
+              </BookmarkProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

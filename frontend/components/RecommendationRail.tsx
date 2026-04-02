@@ -2,10 +2,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { Article } from '../app/page';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, TrendingUp, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { formatDate } from '../lib/dateUtils';
 import BookmarkButton from './BookmarkButton';
 import { API_ENDPOINTS } from '../lib/config';
+import { safeApiRequest } from '../lib/api';
 
 interface RecommendationRailProps {
     currentCategory?: string;
@@ -20,18 +21,9 @@ export default function RecommendationRail({ currentCategory, excludeIds = [] }:
     useEffect(() => {
         async function fetchRecommendations() {
             try {
-                // Fetch more articles than needed to allow for filtering
-                const url = new URL(API_ENDPOINTS.ARTICLES);
-                url.searchParams.append('limit', '30');
-                // If we have a category, maybe fetch from a different one for variety, or same for relevance.
-                // Let's go with "Top Rated" mostly, so we just fetch general recent ones for now
-                // but ideally we'd sort by quality_score if the API supported sorting.
-
-                const res = await fetch(url.toString());
-                if (!res.ok) throw new Error('Failed to fetch');
-
-                const data = await res.json();
-                const allArticles: Article[] = data.articles || [];
+                const url = `${API_ENDPOINTS.ARTICLES}?limit=30`;
+                const data = await safeApiRequest<{ articles?: Article[] }>(url, { skipRetry: true });
+                const allArticles: Article[] = data?.articles ?? [];
 
                 // Smart Filter:
                 // 1. Exclude current articles (excludeIds)
@@ -45,8 +37,8 @@ export default function RecommendationRail({ currentCategory, excludeIds = [] }:
                     .slice(0, 10); // Top 10
 
                 setArticles(filtered);
-            } catch (error) {
-                console.error("Failed to load recommendations", error);
+            } catch {
+                setArticles([]);
             } finally {
                 setLoading(false);
             }
@@ -121,7 +113,7 @@ export default function RecommendationRail({ currentCategory, excludeIds = [] }:
                                 <div className="aspect-[3/4] overflow-hidden bg-muted mb-4 relative rounded-lg">
                                     <img
                                         src={article.image_url}
-                                        alt={article.title}
+                                        alt={article.title || 'Recommended story image'}
                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                         loading="lazy"
                                     />

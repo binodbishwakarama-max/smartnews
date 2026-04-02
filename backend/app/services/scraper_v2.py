@@ -136,10 +136,16 @@ class ScraperV2:
             if len(article.text) < 200:
                 return None
                 
+            # Sanitize content
+            def clean_text(text):
+                if not text: return None
+                # Use BS4 to strip any rogue HTML tags that newspaper3k missed
+                return BeautifulSoup(text, "html.parser").get_text(separator=" ", strip=True)
+
             return {
-                'title': article.title,
-                'content': article.text,
-                'author': ", ".join(article.authors),
+                'title': clean_text(article.title),
+                'content': clean_text(article.text), # Ensure this is plain text
+                'author': clean_text(", ".join(article.authors)),
                 'publish_date': article.publish_date or datetime.utcnow(),
                 'image_url': article.top_image,
                 'url': url

@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { X, Radio, ChevronRight, Newspaper, Zap, BarChart3 } from 'lucide-react';
 import { API_ENDPOINTS } from '../lib/config';
+import { safeApiRequest, checkBackendHealth } from '../lib/api';
+import { ApiErrorDisplay } from './ErrorBoundary';
 
 interface Stats {
     total_articles: number;
@@ -20,20 +22,46 @@ interface Article {
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const [stats, setStats] = useState<Stats | null>(null);
     const [quickFeed, setQuickFeed] = useState<Article[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
-            fetch(API_ENDPOINTS.STATS)
-                .then(res => res.json())
-                .then(setStats)
-                .catch(console.error);
-
-            fetch(API_ENDPOINTS.QUICK_FEED)
-                .then(res => res.json())
-                .then(setQuickFeed)
-                .catch(console.error);
+            loadData();
         }
     }, [isOpen]);
+
+    async function loadData() {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            // Check backend health first
+            const isHealthy = await checkBackendHealth();
+            if (!isHealthy) {
+                setError('Backend service is currently unavailable');
+                return;
+            }
+
+            // Fetch data in parallel with error handling
+            const [statsData, feedData] = await Promise.all([
+                safeApiRequest<Stats>(API_ENDPOINTS.STATS),
+                safeApiRequest<Article[]>(API_ENDPOINTS.QUICK_FEED),
+            ]);
+
+            if (statsData) setStats(statsData);
+            if (feedData) setQuickFeed(feedData);
+
+            if (!statsData && !feedData) {
+                setError('Unable to load data. Please try again.');
+            }
+        } catch (err) {
+            console.error('Error loading sidebar data:', err);
+            setError('Failed to connect to the server');
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     return (
         <>
@@ -44,7 +72,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             />
 
             {/* Panel */}
-            <aside className={`fixed top-0 left-0 h-full w-[350px] bg-white z-[70] shadow-2xl transition-transform duration-500 ease-in-out border-r-2 border-black ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <aside className={`fixed top-0 left-0 h-full w-full max-w-[350px] bg-white z-[70] shadow-2xl transition-transform duration-500 ease-in-out border-r-2 border-black ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="flex flex-col h-full uppercase tracking-widest font-black">
                     {/* Header */}
                     <div className="p-6 border-b-2 border-black flex justify-between items-center bg-paper">
@@ -55,6 +83,18 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
                     </div>
 
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-12">
+                        {/* Error Display */}
+                        {error && (
+                            <ApiErrorDisplay error={error} onRetry={loadData} />
+                        )}
+
+                        {/* Loading State */}
+                        {isLoading && !error && (
+                            <div className="flex items-center justify-center py-8">
+                                <div className="w-8 h-8 border-4 border-black border-t-accent rounded-full animate-spin"></div>
+                            </div>
+                        )}
+
                         {/* 1. Live Ingestion Stats */}
                         <section>
                             <h3 className="text-[10px] text-accent flex items-center gap-2 mb-6">

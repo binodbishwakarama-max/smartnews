@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-@celery_app.task(name="app.tasks.scheduler.schedule_scraping")
+@celery_app.task(name="app.tasks.news_tasks.schedule_scraping")
 def schedule_scraping(priority: int):
     """
     Priority 1: Breaking News sources (Reuters, AP, Bloomberg)
@@ -33,12 +33,12 @@ def schedule_scraping(priority: int):
     
     return f"Scheduled {len(selected_sources)} sources for priority {priority}"
 
-@celery_app.task(name="app.tasks.scraper.scrape_source_task")
+@celery_app.task(name="app.tasks.news_tasks.scrape_source_task")
 def scrape_source_task(source_config: dict):
     """Worker task to scrape a single source"""
     return run_premium_source_scrape(source_config)
 
-@celery_app.task(name="app.tasks.analysis.analyze_trends_task")
+@celery_app.task(name="app.tasks.news_tasks.analyze_trends_task")
 def analyze_trends_task():
     """
     Calculate trending topics by looking at keyword frequency changes 
@@ -72,3 +72,16 @@ def analyze_trends_task():
         db.rollback()
     finally:
         db.close()
+
+@celery_app.task(name="app.tasks.news_tasks.crawl_keywords_task")
+def crawl_keywords_task():
+    """
+    Lazy wrapper around the legacy keyword crawler so worker startup stays lightweight.
+    """
+    try:
+        from app.tasks.scraper import crawl_keywords_task as legacy_crawl_keywords_task
+
+        return legacy_crawl_keywords_task()
+    except Exception as e:
+        logger.warning("Keyword crawl skipped: %s", e)
+        return f"Keyword crawl skipped: {e}"

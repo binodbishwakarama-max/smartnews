@@ -5,7 +5,7 @@ import { Bookmark, Inbox } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BookmarksPage() {
-    const { bookmarks } = useBookmarks();
+    const { bookmarks, isLoading } = useBookmarks();
 
     return (
         <div className="min-h-screen bg-background text-primary selection:bg-accent selection:text-white">
@@ -16,13 +16,23 @@ export default function BookmarksPage() {
                             Saved Stories
                         </h1>
                         <p className="text-sm font-black uppercase tracking-[0.2em] text-secondary">
-                            Your Personal Reading List • {bookmarks.length} Article{bookmarks.length !== 1 ? 's' : ''}
+                            Your Personal Reading List • {isLoading ? 'Loading...' : `${bookmarks.length} Article${bookmarks.length !== 1 ? 's' : ''}`}
                         </p>
                     </div>
                     <Bookmark className="w-12 h-12 text-accent" />
                 </div>
 
-                {bookmarks.length > 0 ? (
+                {isLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-16 animate-pulse">
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} className="space-y-4">
+                                <div className="aspect-video bg-muted rounded-lg" />
+                                <div className="h-6 bg-muted rounded w-3/4" />
+                                <div className="h-4 bg-muted rounded w-1/2" />
+                            </div>
+                        ))}
+                    </div>
+                ) : bookmarks.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-16">
                         {bookmarks.map((article) => (
                             <NewsCard key={article.id} article={article} />

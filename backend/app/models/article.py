@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Float, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, Boolean, JSON, ForeignKey
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 class Article(Base):
@@ -40,6 +41,28 @@ class Article(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    bookmarks = relationship("Bookmark", back_populates="user", cascade="all, delete-orphan")
+
+class Bookmark(Base):
+    __tablename__ = "bookmarks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    article_id = Column(Integer, ForeignKey("articles.id"), index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="bookmarks")
+    article = relationship("Article")
 
 class TrendingTopic(Base):
     __tablename__ = "trending_topics"

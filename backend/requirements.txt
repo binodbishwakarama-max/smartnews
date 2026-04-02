@@ -16,3 +16,10 @@ torch
 python-multipart
 python-jose[cryptography]
 passlib[bcrypt]
+psutil
+slowapi
+gunicorn
+pytest
+httpx
+pytest-asyncio
+aiohttp

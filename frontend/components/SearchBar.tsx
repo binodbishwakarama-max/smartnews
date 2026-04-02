@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, X, Loader2, Clock, TrendingUp, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { API_ENDPOINTS } from '../lib/config';
+import { apiRequest } from '../lib/api';
 
 interface SearchResult {
     id: number;
@@ -57,8 +58,7 @@ export default function SearchBar() {
                 url.searchParams.append('q', query);
                 url.searchParams.append('limit', '10');
 
-                const res = await fetch(url.toString());
-                const data = await res.json();
+                const data = await apiRequest<{ results: SearchResult[], total: number }>(url.toString());
                 setResults(data.results || []);
                 setTotalResults(data.total || 0);
             } catch (error) {
@@ -237,7 +237,7 @@ export default function SearchBar() {
                                     ) : !isLoading && (
                                         <div className="text-center py-16">
                                             <Search className="w-16 h-16 mx-auto mb-6 opacity-20" />
-                                            <p className="text-lg font-bold mb-2">No results found for "{query}"</p>
+                                            <p className="text-lg font-bold mb-2">No results found for &quot;{query}&quot;</p>
                                             <p className="text-sm text-secondary">Try different keywords or check spelling</p>
                                         </div>
                                     )

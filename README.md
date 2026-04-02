@@ -148,10 +148,21 @@ CLICKBAIT_MODEL_PATH=backend/ml/models/clickbait_model.joblib
 
 ## 🧪 Testing
 
+**Quick API check** (from repo root):
 ```powershell
-# Test all API endpoints
 python test_api.py
 ```
+
+**Backend unit/integration tests** (pytest):
+```powershell
+cd backend
+pip install -r requirements.txt
+$env:DATABASE_URL = "sqlite:///:memory:"
+$env:SECRET_KEY = "test-key"
+python -m pytest tests/ -v --tb=short
+```
+
+See **PROJECT_COMPLETION.md** for full run instructions and CI details.
 
 ---
 

@@ -1,17 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Loader2, ChevronDown } from 'lucide-react';
 
-interface Article {
-    id: number;
-    title: string;
-    summary: string;
-    category: string;
-    source: string;
-    url: string;
-    image_url: string;
-    publish_date: string;
-}
+import { useEffect } from 'react';
+import { ChevronDown, Loader2 } from 'lucide-react';
 
 interface LoadMoreButtonProps {
     onLoadMore: () => void;
@@ -28,9 +18,6 @@ export default function LoadMoreButton({
     currentCount,
     totalCount
 }: LoadMoreButtonProps) {
-    const [isInView, setIsInView] = useState(false);
-
-    // Auto-load when scrolled near bottom
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -57,10 +44,10 @@ export default function LoadMoreButton({
         return (
             <div className="text-center py-12 border-t-2 border-black mt-12">
                 <div className="inline-block px-6 py-3 bg-black text-white font-black uppercase tracking-widest text-sm">
-                    ✓ All {totalCount} Articles Loaded
+                    All {totalCount} Articles Loaded
                 </div>
                 <p className="text-xs text-secondary mt-4">
-                    You've reached the end of the feed
+                    You&apos;ve reached the end of the feed
                 </p>
             </div>
         );

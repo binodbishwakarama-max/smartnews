@@ -1,9 +1,6 @@
-import { Suspense } from 'react';
-import Header from '@/components/Header';
 import { NewsCard } from '@/components/EditorialComponents';
 import ArticleFeed from '@/components/ArticleFeed';
 import Link from 'next/link';
-import { TrendingUp } from 'lucide-react';
 import { API_ENDPOINTS } from '@/lib/config';
 
 export interface Article {
@@ -22,33 +19,41 @@ export interface Article {
 
 const CATEGORIES = ['World', 'Business', 'Technology', 'AI & Startups', 'Science', 'Health', 'Politics', 'Culture', 'Sports', 'Environment', 'Education'];
 
+import { apiRequest } from '@/lib/api';
+
+interface ArticlesResponse {
+  articles?: Article[];
+}
+
 async function getArticles(category?: string): Promise<Article[]> {
   try {
     const url = new URL(API_ENDPOINTS.ARTICLES);
     if (category) url.searchParams.append('category', category);
-    url.searchParams.append('limit', '20'); // Initial load: 20 articles
+    url.searchParams.append('limit', '20');
 
-    const res = await fetch(url.toString(), { next: { revalidate: 120 } });
-    if (!res.ok) return [];
+    const data = await apiRequest<ArticlesResponse | Article[]>(url.toString(), {
+      next: { revalidate: 120 },
+    });
 
-    const data = await res.json();
-    // Handle new pagination response format
-    return data.articles || data || [];
+    return Array.isArray(data) ? data : data.articles || [];
   } catch (error) {
-    console.error("Failed to fetch articles", error);
+    console.error('Failed to fetch articles:', error);
     return [];
   }
 }
 
 async function getTrending(): Promise<{ topic: string, article_count: number }[]> {
   try {
-    const res = await fetch('http://127.0.0.1:8000/api/v1/trending', { next: { revalidate: 300 } });
-    if (!res.ok) return [];
-    return res.json();
+    return await apiRequest<{ topic: string, article_count: number }[]>(API_ENDPOINTS.TRENDING, {
+      next: { revalidate: 300 },
+    });
   } catch (error) {
+    console.error('Failed to fetch trending topics:', error);
     return [];
   }
 }
+
+import TrendingSidebar from '@/components/TrendingSidebar';
 
 export default async function Home({
   searchParams,
@@ -56,15 +61,15 @@ export default async function Home({
   searchParams: Promise<{ category?: string }>;
 }) {
   const { category } = await searchParams;
-  const articles = await getArticles(category);
-  const trending = await getTrending();
+
+  // Fetch data in parallel for better performance
+  const [articles, trending] = await Promise.all([
+    getArticles(category),
+    getTrending(),
+  ]);
 
   return (
     <div className="min-h-screen bg-background text-primary selection:bg-accent selection:text-white">
-      <Suspense fallback={<div className="h-24 bg-muted animate-pulse border-b-2 border-black" />}>
-        <Header />
-      </Suspense>
-
       <main className="max-w-7xl mx-auto px-6 py-10">
 
         {category && (
@@ -86,21 +91,7 @@ export default async function Home({
 
           <div className="lg:w-80 flex-shrink-0">
             <div className="sticky top-32 space-y-12">
-              <section className="p-6 bg-paper border border-border shadow-sm">
-                <h3 className="text-lg font-serif font-black flex items-center gap-2 mb-6 border-b border-black pb-2">
-                  <TrendingUp className="w-4 h-4 text-accent" />
-                  The Daily Brief
-                </h3>
-                <div className="flex flex-col divide-y divide-border">
-                  {trending.map((t, i) => (
-                    <Link key={i} href={`/?category=${t.topic}`} className="py-4 hover:bg-muted/50 transition-colors group">
-                      <span className="text-[10px] font-black text-accent uppercase tracking-widest mb-1 block">Trending #{i + 1}</span>
-                      <h4 className="font-bold text-sm tracking-tight group-hover:underline">{t.topic}</h4>
-                      <span className="text-[10px] text-secondary font-medium uppercase mt-2 block">{t.article_count} New Reports</span>
-                    </Link>
-                  ))}
-                </div>
-              </section>
+              <TrendingSidebar topics={trending} />
 
               <section>
                 <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-6 text-secondary border-b border-border pb-2">Featured Shorts</h3>

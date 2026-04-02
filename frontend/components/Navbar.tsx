@@ -15,16 +15,17 @@ export default function Navbar() {
     }, []);
 
     return (
-        <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'py-4 glass shadow-sm' : 'py-6 bg-transparent'}`}>
+        <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'py-4 glass shadow-sm' : 'py-6 bg-transparent'}`}
+            role="banner">
             <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
 
                 {/* Left: Menu */}
-                <button className="p-2 hover:bg-gray-100/50 rounded-full transition hidden md:block">
+                <button className="p-2 hover:bg-gray-100/50 rounded-full transition hidden md:block" aria-label="Open menu">
                     <Menu className="w-5 h-5 text-primary" />
                 </button>
 
                 {/* Center: Logo */}
-                <Link href="/" className="absolute left-1/2 -translate-x-1/2 group">
+                <Link href="/" className="absolute left-1/2 -translate-x-1/2 group" aria-label="Go to homepage">
                     <h1 className="font-serif text-3xl font-bold tracking-tight">
                         The Smart<span className="text-accent">News</span>.
                     </h1>
@@ -33,10 +34,10 @@ export default function Navbar() {
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-4">
-                    <button className="p-2 hover:bg-gray-100/50 rounded-full transition">
+                    <button className="p-2 hover:bg-gray-100/50 rounded-full transition" aria-label="Search">
                         <Search className="w-5 h-5 text-primary" />
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-accent transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 duration-300">
+                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-full text-xs font-bold uppercase tracking-wider hover:bg-accent transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 duration-300" aria-label="Sign in">
                         <User className="w-3 h-3" />
                         <span>Sign In</span>
                     </button>

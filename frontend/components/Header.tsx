@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Menu, Clock } from 'lucide-react';
-import Sidebar from './Sidebar';
+import { UserButton, SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
 import SearchBar from './SearchBar';
 import ThemeToggle from './ThemeToggle';
+import Sidebar from './Sidebar';
 
 const CATEGORIES = [
     'Latest', 'World', 'Business', 'Technology', 'Science', 'Health', 'Politics', 'Culture', 'Sports'
@@ -19,18 +20,33 @@ export default function Header() {
     return (
         <header className="bg-white dark:bg-background border-b-2 border-black dark:border-white sticky top-0 z-50">
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-            {/* Utility Bar */}
-            <div className="max-w-7xl mx-auto px-6 py-2 flex justify-between items-center text-[10px] uppercase font-black tracking-widest border-b border-border">
+
+            {/* Utility Bar - Hidden on Mobile */}
+            <div className="hidden md:flex max-w-7xl mx-auto px-6 py-2 justify-between items-center text-[10px] uppercase font-black tracking-widest border-b border-border">
                 <div className="flex gap-4 items-center">
                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Live Updates</span>
                     <span>US Edition</span>
                 </div>
                 <div className="flex gap-4 items-center">
                     <button className="hover:underline">Subscribe</button>
-                    <button className="hover:underline">Sign In</button>
-                    <Link href="/saved" className="hover:text-accent font-black hover:underline flex items-center gap-1">
-                        SAVED
-                    </Link>
+
+                    <SignedOut>
+                        <SignInButton mode="modal">
+                            <button className="hover:underline hover:text-accent font-bold">Sign In</button>
+                        </SignInButton>
+                    </SignedOut>
+                    <SignedIn>
+                        <div className="flex items-center gap-4">
+                            <UserButton afterSignOutUrl="/" />
+                            <Link href="/saved" className="hover:text-accent font-black hover:underline flex items-center gap-1">
+                                SAVED
+                            </Link>
+                            <Link href="/admin" className="hover:text-accent font-black hover:underline flex items-center gap-1">
+                                ADMIN
+                            </Link>
+                        </div>
+                    </SignedIn>
+
                     <ThemeToggle />
                 </div>
             </div>
@@ -52,7 +68,8 @@ export default function Header() {
                 <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
                     <button
                         onClick={() => setIsSidebarOpen(true)}
-                        className="p-2 -ml-2 hover:bg-black hover:text-white transition-all transform hover:scale-110 active:scale-95"
+                        className="p-3 -ml-2 md:p-2 md:-ml-2 hover:bg-black hover:text-white transition-all transform hover:scale-110 active:scale-95 rounded-full md:rounded-none"
+                        aria-label="Open Menu"
                     >
                         <Menu className="w-5 h-5" />
                     </button>

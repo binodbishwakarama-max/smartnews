@@ -1,13 +1,25 @@
+from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.article import TrendingTopic
+from app.api.v1.schemas import TrendingTopic as TrendingTopicSchema
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/trending",
+    tags=["trending"],
+    responses={404: {"description": "Trending topics not found"}}
+)
 
-@router.get("/")
-def get_trending(db: Session = Depends(get_db)):
+@router.get("/", response_model=List[TrendingTopicSchema])
+def get_trending(
+    db: Session = Depends(get_db),
+    limit: int = 10
+):
     """
-    Returns the top current trending keywords/topics.
+    Get trending topics.
+
+    Returns the top trending keywords/topics sorted by article count.
+    These topics are dynamically calculated based on recent article content.
     """
-    return db.query(TrendingTopic).order_by(TrendingTopic.article_count.desc()).limit(10).all()
+    return db.query(TrendingTopic).order_by(TrendingTopic.article_count.desc()).limit(limit).all()

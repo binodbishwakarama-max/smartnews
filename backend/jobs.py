@@ -1,4 +1,5 @@
 import asyncio
+
 import logging
 from app.db.session import engine, Base
 from app.services.scraper_v2 import SCRAPER_CONFIG

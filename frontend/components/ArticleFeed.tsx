@@ -1,15 +1,23 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NewsCard, LeadStory } from './EditorialComponents';
-import LoadMoreButton from './LoadMoreButton';
-import RecommendationRail from './RecommendationRail';
+import dynamic from 'next/dynamic';
+
+const RecommendationRail = dynamic(() => import('./RecommendationRail'), { ssr: false });
 import type { Article } from '../app/page';
 import { API_ENDPOINTS } from '../lib/config';
+import { safeApiRequest } from '../lib/api';
 
 interface ArticleFeedProps {
     initialArticles: Article[];
     category?: string;
     showHero?: boolean;
+}
+
+interface ArticlesResponse {
+    articles?: Article[];
+    total?: number;
+    has_more?: boolean;
 }
 
 const ARTICLES_PER_PAGE = 20;
@@ -35,35 +43,55 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
 
         setIsLoading(true);
         try {
-            const url = new URL(API_ENDPOINTS.ARTICLES);
-            url.searchParams.append('limit', ARTICLES_PER_PAGE.toString());
-            url.searchParams.append('offset', offset.toString());
-            if (category) url.searchParams.append('category', category);
+            const url = `${API_ENDPOINTS.ARTICLES}?limit=${ARTICLES_PER_PAGE}&offset=${offset}${category ? `&category=${encodeURIComponent(category)}` : ''}`;
+            const data = await safeApiRequest<ArticlesResponse | Article[]>(url, { skipRetry: true });
 
-            const res = await fetch(url.toString());
-            if (!res.ok) {
+            if (!data) {
                 setHasMore(false);
                 return;
             }
 
-            const data = await res.json();
-            const newArticles = data.articles || data || [];
+            const newArticles = Array.isArray(data) ? data : data.articles || [];
 
             setArticles(prev => {
                 const existingIds = new Set(prev.map(a => a.id));
                 const uniqueNew = newArticles.filter((a: Article) => !existingIds.has(a.id));
                 return [...prev, ...uniqueNew];
             });
-            setTotalCount(data.total || totalCount);
-            setHasMore(data.has_more || false);
+            const nextTotal = Array.isArray(data) ? totalCount : data.total ?? totalCount;
+            const nextHasMore = Array.isArray(data) ? false : data.has_more ?? false;
+            setTotalCount(nextTotal);
+            setHasMore(nextHasMore);
             setOffset(prev => prev + ARTICLES_PER_PAGE);
-        } catch (error) {
-            console.error('Failed to load more articles:', error);
+        } catch {
             setHasMore(false);
         } finally {
             setIsLoading(false);
         }
     };
+
+    const observerTarget = useRef(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isLoading) {
+                    loadMore();
+                }
+            },
+            { threshold: 0.1, rootMargin: '400px' }
+        );
+
+        if (observerTarget.current) {
+            observer.observe(observerTarget.current);
+        }
+
+        return () => {
+            if (observerTarget.current) {
+                observer.unobserve(observerTarget.current);
+            }
+        };
+    }, [hasMore, isLoading, observerTarget]); // Re-run when state changes to ensure we capture latest closures if needed, though loadMore uses refs usually or state.
 
     // Determine which articles to show
     const displayArticles = showHero ? articles.slice(1) : articles;
@@ -84,7 +112,7 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
             {/* First Block of Grid Articles */}
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16 ${category ? 'py-4' : ''}`}>
                 {articlesBeforeRail.map((art, idx) => (
-                    <NewsCard key={art.id || idx} article={art} />
+                    <NewsCard key={art.id || `before-${idx}`} article={art} />
                 ))}
             </div>
 
@@ -107,13 +135,20 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
                 </div>
             )}
 
-            <LoadMoreButton
-                onLoadMore={loadMore}
-                isLoading={isLoading}
-                hasMore={hasMore}
-                currentCount={articles.length}
-                totalCount={totalCount}
-            />
+            {/* Infinite Scroll Sentinel & Loader */}
+            <div ref={observerTarget} className="py-12 flex justify-center w-full">
+                {isLoading && (
+                    <div className="flex items-center space-x-2 text-accent-500">
+                        <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-sm font-medium tracking-wide uppercase">Discovering More...</span>
+                    </div>
+                )}
+                {!hasMore && articles.length > 0 && (
+                    <div className="text-center text-gray-500 py-8">
+                        <p className="text-sm tracking-widest uppercase">You&apos;re all caught up</p>
+                    </div>
+                )}
+            </div>
         </>
     );
 }
