@@ -1,0 +1,31 @@
+# Ignore the entire backend directory
+
+backend/
+
+# Ignore Python virtual environments
+
+.venv/
+\*.venv/
+
+# Ignore database files
+
+_.db
+_.sqlite3
+
+# Ignore logs
+
+logs/
+\*.log
+
+# Ignore local environment files
+
+.env.local
+.env.\*.local
+
+# Ignore IDE and OS files
+
+.vscode/
+.idea/
+.DS_Store
+_.swo
+_~
