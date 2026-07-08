@@ -82,7 +82,7 @@ def verify_clerk_token(token: str):
         logger.debug("Clerk token verified for %s", payload.get("sub"))
         return payload
     except JWTError as exc:
-        logger.debug("Clerk token verification failed: %s", exc)
+        logger.warning("Clerk token verification failed: %s (token prefix: %s)", exc, token[:30] if token else None)
         return None
 
 
@@ -185,6 +185,7 @@ def get_current_user(
         raise HTTPException(status_code=500, detail="Database session not available")
 
     token = credentials.credentials
+
 
     payload = verify_clerk_token(token)
     is_clerk = payload is not None

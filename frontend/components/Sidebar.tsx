@@ -72,12 +72,12 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             />
 
             {/* Panel */}
-            <aside className={`fixed top-0 left-0 h-full w-full max-w-[350px] bg-white z-[70] shadow-2xl transition-transform duration-500 ease-in-out border-r-2 border-black ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <aside className={`fixed inset-y-0 left-0 w-full max-w-[350px] bg-card z-[70] shadow-2xl transition-transform duration-500 ease-in-out border-r-2 border-border text-primary ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="flex flex-col h-full uppercase tracking-widest font-black">
                     {/* Header */}
-                    <div className="p-6 border-b-2 border-black flex justify-between items-center bg-paper">
+                    <div className="p-6 border-b-2 border-border flex justify-between items-center bg-paper">
                         <span className="text-[11px]">Newsroom Command</span>
-                        <button onClick={onClose} className="p-2 hover:bg-black hover:text-white transition-colors">
+                        <button onClick={onClose} className="p-2 hover:bg-primary hover:text-card transition-colors">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
@@ -91,7 +91,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
                         {/* Loading State */}
                         {isLoading && !error && (
                             <div className="flex items-center justify-center py-8">
-                                <div className="w-8 h-8 border-4 border-black border-t-accent rounded-full animate-spin"></div>
+                                <div className="w-8 h-8 border-4 border-border border-t-accent rounded-full animate-spin"></div>
                             </div>
                         )}
 
@@ -111,13 +111,13 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
                                 </div>
                             </div>
                             <div className="mt-4 flex items-center gap-2 text-[9px] text-secondary">
-                                <Zap className="w-3 h-3 text-yellow-500" /> System Status: <span className="text-black">{stats?.status || 'Syncing...'}</span>
+                                <Zap className="w-3 h-3 text-yellow-500" /> System Status: <span className="text-primary">{stats?.status || 'Syncing...'}</span>
                             </div>
                         </section>
 
                         {/* 3. Extended Sections */}
                         <section>
-                            <h3 className="text-[10px] flex items-center gap-2 mb-6 border-b border-black pb-2">
+                            <h3 className="text-[10px] flex items-center gap-2 mb-6 border-b border-border pb-2">
                                 <Newspaper className="w-3 h-3" /> Extended Sections
                             </h3>
                             <div className="flex flex-col gap-4">
@@ -142,7 +142,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
 
                         {/* 4. Quick-Feed */}
                         <section>
-                            <h3 className="text-[10px] flex items-center gap-2 mb-6 border-b border-black pb-2">
+                            <h3 className="text-[10px] flex items-center gap-2 mb-6 border-b border-border pb-2">
                                 <BarChart3 className="w-3 h-3" /> The Quick-Feed (Latest 10)
                             </h3>
                             <div className="flex flex-col gap-6">
@@ -155,7 +155,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
                                         className="group block"
                                     >
                                         <div className="flex items-center gap-2 mb-2">
-                                            <span className="text-[8px] px-1 bg-black text-white">{art.source}</span>
+                                            <span className="text-[8px] px-1 bg-brand text-card">{art.source}</span>
                                             <span className="text-[8px] text-secondary">{new Date(art.publish_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
                                         <h4 className="text-[11px] leading-tight font-bold group-hover:text-accent lowercase normal-case">

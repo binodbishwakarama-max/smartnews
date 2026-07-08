@@ -29,7 +29,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # Log request
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"{request.method} {request.url.path} - {request.client.host}")
+        auth_header = request.headers.get("Authorization")
+        has_auth = "Yes" if auth_header else "No"
+        auth_type = auth_header.split()[0] if auth_header else None
+        logger.info(f"{request.method} {request.url.path} - {request.client.host} - Auth: {has_auth} (Type: {auth_type})")
+
 
         response = await call_next(request)
 

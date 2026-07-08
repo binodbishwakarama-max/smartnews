@@ -124,8 +124,10 @@ def health_check():
         health_status["database"] = "connected"
     except Exception as e:
         health_status["database"] = "disconnected"
-        health_status["database_error"] = str(e)
+        if settings.DEBUG:
+            health_status["database_error"] = str(e)
         logger.warning(f"Database health check failed: {e}")
+
 
 
     return health_status

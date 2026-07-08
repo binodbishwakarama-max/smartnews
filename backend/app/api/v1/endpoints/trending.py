@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.article import TrendingTopic
@@ -14,7 +14,7 @@ router = APIRouter(
 @router.get("/", response_model=List[TrendingTopicSchema])
 def get_trending(
     db: Session = Depends(get_db),
-    limit: int = 10
+    limit: int = Query(10, ge=1, le=50, description="Maximum number of trending topics to return")
 ):
     """
     Get trending topics.

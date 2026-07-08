@@ -93,7 +93,7 @@ def get_scraping_status(db: Session = Depends(get_db)):
 
 @router.delete("/cleanup", response_model=Dict)
 def cleanup_old_articles(
-    days_old: int = 30,
+    days_old: int = Query(30, ge=1, le=365, description="Number of days of history to keep"),
     db: Session = Depends(get_db)
 ):
     """

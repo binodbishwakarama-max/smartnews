@@ -22,7 +22,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         if (isLoaded) {
-            registerTokenGetter(() => getToken());
+            registerTokenGetter(async () => {
+                const token = await getToken();
+                return token;
+            });
         }
     }, [getToken, isLoaded]);
 

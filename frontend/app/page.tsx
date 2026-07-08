@@ -97,7 +97,7 @@ export default async function Home({
                 <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-6 text-secondary border-b border-border pb-2">Featured Shorts</h3>
                 <div className="flex flex-col divide-y divide-border">
                   {articles.slice(12, 17).map((art, idx) => (
-                    <NewsCard key={idx} article={art} horizontal />
+                    <NewsCard key={art.id || idx} article={art} horizontal />
                   ))}
                 </div>
               </section>
@@ -115,7 +115,7 @@ export default async function Home({
 
       </main>
 
-      <footer className="mt-32 border-t-2 border-black bg-white py-16">
+      <footer className="mt-32 border-t-2 border-brand bg-card py-16">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           <div className="col-span-1 lg:col-span-2">
             <h2 className="text-4xl font-serif font-black tracking-tighter uppercase mb-6">The Smart News<span className="text-accent">.</span></h2>
@@ -150,15 +150,7 @@ async function CategoryRow({ category }: { category: string }) {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {articles.slice(0, 4).map((art, idx) => (
-          <article key={idx} className="group flex flex-col gap-3">
-            <div className="news-image-wrap rounded-sm aspect-video">
-              <img src={art.image_url || '/placeholder.jpg'} alt="" className="w-full h-full object-cover" />
-            </div>
-            <h4 className="font-serif text-lg font-bold leading-tight group-hover:text-accent">
-              <a href={art.url} target="_blank" rel="noopener noreferrer">{art.title}</a>
-            </h4>
-            <span className="text-[10px] font-black uppercase tracking-widest text-secondary">{art.source}</span>
-          </article>
+          <NewsCard key={art.id || idx} article={art} dense />
         ))}
       </div>
     </section>

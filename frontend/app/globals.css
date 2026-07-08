@@ -1,52 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   /* Ultra-Premium Editorial Typography */
-  --font-sans: "Aptos", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --font-sans: "Plus Jakarta Sans", "Outfit", "Segoe UI", sans-serif;
+  --font-serif: "Playfair Display", "Cinzel", Georgia, serif;
+  --font-mono: "JetBrains Mono", monospace;
 
   /* Classic Journalism Palette - Light Mode */
-  --color-brand: #000000;
-  --color-accent: #e02020;
-  /* Sharp Red for alerts/live */
-  --color-primary: #121212;
-  --color-secondary: #666666;
-  --color-border: #e2e2e2;
-  --color-background: #ffffff;
-  --color-paper: #f9f7f2;
-  /* Newsprint white */
-  --color-muted: #f5f5f5;
+  --color-brand: #111111;
+  --color-accent: #c22026; /* Premium crimson editorial red */
+  --color-gold: #b28e40; /* Royal gold for top quality items */
+  --color-primary: #111827; /* Tailwind gray-900 */
+  --color-secondary: #4b5563; /* Tailwind gray-600 */
+  --color-border: #e5e7eb; /* Tailwind gray-200 */
+  --color-background: #fcfbf9; /* Soft museum newsprint paper background */
+  --color-paper: #f7f5f0;
+  --color-muted: #f3f4f6;
 
   /* UI Component Colors */
   --color-card: #ffffff;
-  --color-card-foreground: #121212;
-  --color-input: #e2e2e2;
-  --color-ring: #e02020;
+  --color-card-foreground: #111827;
+  --color-input: #e5e7eb;
+  --color-ring: #c22026;
   --color-destructive: #dc2626;
   --color-destructive-foreground: #ffffff;
-  --color-muted-foreground: #666666;
+  --color-muted-foreground: #4b5563;
 }
 
-/* Dark Mode Color Overrides */
+/* Dark Mode Color Overrides - Premium Space Navy Theme */
 .dark {
-  --color-brand: #ffffff;
-  --color-accent: #ff4444;
-  --color-primary: #e8e8e8;
-  --color-secondary: #d4d4d4;
-  --color-border: #2a2a2a;
-  --color-background: #0a0a0a;
-  --color-paper: #121212;
-  --color-muted: #1a1a1a;
+  --color-brand: #f9fafb;
+  --color-accent: #ef4444; /* Clean red — visible on dark surfaces */
+  --color-gold: #e2b960;
+  --color-primary: #f1f5f9; /* slate-100 — high contrast body text */
+  --color-secondary: #94a3b8; /* slate-400 — readable secondary text */
+  --color-border: #334155; /* slate-700 — visible dividers */
+  --color-background: #0f172a; /* slate-900 — deep but not pure black */
+  --color-paper: #1e293b; /* slate-800 — clear card surface lift */
+  --color-muted: #1e293b;
 
   /* UI Component Colors - Dark Mode */
-  --color-card: #121212;
-  --color-card-foreground: #e8e8e8;
-  --color-input: #2a2a2a;
-  --color-ring: #ff4444;
-  --color-destructive: #dc2626;
+  --color-card: #1e293b;
+  --color-card-foreground: #f1f5f9;
+  --color-input: #334155;
+  --color-ring: #ef4444;
+  --color-destructive: #ef4444;
   --color-destructive-foreground: #ffffff;
-  --color-muted-foreground: #d4d4d4;
+  --color-muted-foreground: #94a3b8;
 }
 
 /* Base Styles */
@@ -103,17 +104,9 @@ h4 {
   transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), filter 0.5s ease;
 }
 
-.dark .news-image-wrap img {
-  filter: contrast(0.95) saturate(0.9) brightness(0.9);
-}
-
 .news-image-wrap:hover img {
   transform: scale(1.02);
   filter: contrast(1) saturate(1);
-}
-
-.dark .news-image-wrap:hover img {
-  filter: contrast(1) saturate(1) brightness(1);
 }
 
 /* High-Density Layout Utilities */
@@ -152,27 +145,4 @@ h4 {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--color-secondary);
-}
-
-/* Premium Theme Toggle Animations */
-@keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-spin-slow {
-  animation: spin-slow 20s linear infinite;
-}
-
-.delay-75 {
-  animation-delay: 75ms;
-}
-
-.delay-150 {
-  animation-delay: 150ms;
 }

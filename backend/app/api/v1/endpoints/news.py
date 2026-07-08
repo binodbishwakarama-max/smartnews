@@ -173,13 +173,16 @@ def get_stats(db: Session = Depends(get_db)):
         }
     except Exception as e:
         import logging
+        from app.core.config import settings
         logging.error(f"Stats endpoint error: {e}")
+        err_msg = str(e) if settings.DEBUG else "Failed to retrieve statistics"
         return {
             "total_articles": 0,
             "new_today": 0,
             "status": "Error",
-            "error": str(e)
+            "error": err_msg
         }
+
 
 @router.get("/quick-feed", response_model=List[ArticleSchema])
 def get_quick_feed(

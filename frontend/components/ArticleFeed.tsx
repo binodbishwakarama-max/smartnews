@@ -26,45 +26,62 @@ const RAIL_INSERT_POSITION = 6; // Insert rail after 6th grid item
 export default function ArticleFeed({ initialArticles, category, showHero = false }: ArticleFeedProps) {
     const [articles, setArticles] = useState<Article[]>(initialArticles);
     const [isLoading, setIsLoading] = useState(false);
-    const [hasMore, setHasMore] = useState(initialArticles.length >= ARTICLES_PER_PAGE);
+    const [hasMore, setHasMore] = useState(true); // Always true for X-like infinite scrolling
     const [totalCount, setTotalCount] = useState(initialArticles.length * 2); // Estimate
     const [offset, setOffset] = useState(ARTICLES_PER_PAGE);
 
     // Reset state when category changes
     useEffect(() => {
         setArticles(initialArticles);
-        setHasMore(initialArticles.length >= ARTICLES_PER_PAGE);
+        setHasMore(true);
         setOffset(ARTICLES_PER_PAGE);
         setIsLoading(false);
     }, [category, initialArticles]);
 
     const loadMore = async () => {
-        if (isLoading || !hasMore) return;
+        if (isLoading) return;
 
         setIsLoading(true);
         try {
-            const url = `${API_ENDPOINTS.ARTICLES}?limit=${ARTICLES_PER_PAGE}&offset=${offset}${category ? `&category=${encodeURIComponent(category)}` : ''}`;
+            let currentOffset = offset;
+            // If we have hit or exceeded the known total count, cycle back to the beginning
+            if (totalCount > 0 && currentOffset >= totalCount) {
+                currentOffset = 0;
+            }
+
+            const url = `${API_ENDPOINTS.ARTICLES}?limit=${ARTICLES_PER_PAGE}&offset=${currentOffset}${category ? `&category=${encodeURIComponent(category)}` : ''}`;
             const data = await safeApiRequest<ArticlesResponse | Article[]>(url, { skipRetry: true });
 
             if (!data) {
-                setHasMore(false);
                 return;
             }
 
-            const newArticles = Array.isArray(data) ? data : data.articles || [];
+            let newArticles = Array.isArray(data) ? data : data.articles || [];
 
-            setArticles(prev => {
-                const existingIds = new Set(prev.map(a => a.id));
-                const uniqueNew = newArticles.filter((a: Article) => !existingIds.has(a.id));
-                return [...prev, ...uniqueNew];
-            });
-            const nextTotal = Array.isArray(data) ? totalCount : data.total ?? totalCount;
-            const nextHasMore = Array.isArray(data) ? false : data.has_more ?? false;
-            setTotalCount(nextTotal);
-            setHasMore(nextHasMore);
-            setOffset(prev => prev + ARTICLES_PER_PAGE);
+            // If the endpoint returns no articles (e.g. database cleared or exact offset mismatch),
+            // cycle to offset 0 and try loading the first page again
+            if (newArticles.length === 0 && currentOffset > 0) {
+                const retryUrl = `${API_ENDPOINTS.ARTICLES}?limit=${ARTICLES_PER_PAGE}&offset=0${category ? `&category=${encodeURIComponent(category)}` : ''}`;
+                const retryData = await safeApiRequest<ArticlesResponse | Article[]>(retryUrl, { skipRetry: true });
+                newArticles = retryData ? (Array.isArray(retryData) ? retryData : retryData.articles || []) : [];
+                currentOffset = 0;
+            }
+
+            if (newArticles.length > 0) {
+                // Append all newly fetched articles (allowing duplicates in infinite scrolling cycle)
+                setArticles(prev => [...prev, ...newArticles]);
+                
+                const nextTotal = Array.isArray(data) ? totalCount : data.total ?? totalCount;
+                setTotalCount(nextTotal);
+                setOffset(currentOffset + ARTICLES_PER_PAGE);
+            } else {
+                // If there are literally 0 articles in the database for this query/category, stop loading
+                if (articles.length === 0) {
+                    setHasMore(false);
+                }
+            }
         } catch {
-            setHasMore(false);
+            // Keep hasMore true so we can retry on next scroll attempt/intersection
         } finally {
             setIsLoading(false);
         }
@@ -79,7 +96,7 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
                     loadMore();
                 }
             },
-            { threshold: 0.1, rootMargin: '400px' }
+            { threshold: 0.1, rootMargin: '600px' } // Increased rootMargin for a smoother pre-load experience
         );
 
         if (observerTarget.current) {
@@ -91,7 +108,7 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
                 observer.unobserve(observerTarget.current);
             }
         };
-    }, [hasMore, isLoading, observerTarget]); // Re-run when state changes to ensure we capture latest closures if needed, though loadMore uses refs usually or state.
+    }, [hasMore, isLoading, observerTarget]);
 
     // Determine which articles to show
     const displayArticles = showHero ? articles.slice(1) : articles;
@@ -112,7 +129,7 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
             {/* First Block of Grid Articles */}
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16 ${category ? 'py-4' : ''}`}>
                 {articlesBeforeRail.map((art, idx) => (
-                    <NewsCard key={art.id || `before-${idx}`} article={art} />
+                    <NewsCard key={`before-${art.id}-${idx}`} article={art} />
                 ))}
             </div>
 
@@ -130,7 +147,7 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
             {articlesAfterRail.length > 0 && (
                 <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16 mt-16`}>
                     {articlesAfterRail.map((art, idx) => (
-                        <NewsCard key={art.id || `after-${idx}`} article={art} />
+                        <NewsCard key={`after-${art.id}-${idx}`} article={art} />
                     ))}
                 </div>
             )}
@@ -143,9 +160,9 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
                         <span className="text-sm font-medium tracking-wide uppercase">Discovering More...</span>
                     </div>
                 )}
-                {!hasMore && articles.length > 0 && (
-                    <div className="text-center text-gray-500 py-8">
-                        <p className="text-sm tracking-widest uppercase">You&apos;re all caught up</p>
+                {!hasMore && articles.length === 0 && (
+                    <div className="text-center text-secondary py-8">
+                        <p className="text-sm tracking-widest uppercase">No articles available</p>
                     </div>
                 )}
             </div>

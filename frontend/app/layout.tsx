@@ -55,7 +55,7 @@ export default function RootLayout({
       <html lang="en" suppressHydrationWarning>
         <body className="font-sans">
           <ServiceWorkerRegister />
-          {/* <AuthProvider> */}
+          <AuthProvider>
           <ThemeProvider>
             <BookmarkProvider>
               <ErrorBoundary>
@@ -70,7 +70,7 @@ export default function RootLayout({
               </ErrorBoundary>
             </BookmarkProvider>
           </ThemeProvider>
-          {/* </AuthProvider> */}
+          </AuthProvider>
         </body>
       </html>
     </ClerkProvider>

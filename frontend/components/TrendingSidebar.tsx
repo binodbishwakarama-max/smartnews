@@ -41,7 +41,7 @@ export default function TrendingSidebar({ topics }: { topics: TrendingTopic[] })
                     <input
                         type="email"
                         placeholder="email@example.com"
-                        className="bg-white border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                        className="bg-card border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary"
                     />
                     <button className="bg-primary text-white py-2 text-xs font-bold uppercase tracking-widest hover:bg-brand transition-colors">
                         Subscribe
