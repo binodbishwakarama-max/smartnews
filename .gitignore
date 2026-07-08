@@ -22,3 +22,19 @@ backend/news.db
 # IDE
 .vscode/
 .idea/
+
+# SQLite DBs
+*.db
+backend/*.db
+
+# Agent files
+.agents/
+frontend/.agents/
+skills-lock.json
+frontend/skills-lock.json
+
+# Logs
+logs/
+backend/logs/
+*.log
+
