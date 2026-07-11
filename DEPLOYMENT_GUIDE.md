@@ -1,58 +1,74 @@
-# 🚀 Deployment Guide: Smart News App
+# 🚀 Deployment Guide: Smart News App (100% Free Stack)
 
-Your app is ready for the world. Follow these 3 steps to launch it.
-
-## Step 1: Push to GitHub 🐙
-
-1.  Log in to [GitHub.com](https://github.com) and create a **New Repository** named `smartnews`.
-2.  **Do not** add a README or .gitignore (we already have them).
-3.  Run these commands in your terminal (copy-paste them):
-
-```bash
-git remote add origin https://github.com/YOUR_USERNAME/smartnews.git
-git branch -M main
-git push -u origin main
-```
-*(Replace `YOUR_USERNAME` with your actual GitHub username)*
+Follow these steps to deploy your production-ready Smart News Aggregator for free using **Supabase** (PostgreSQL database), **Render** (FastAPI backend), and **Vercel** (Next.js frontend).
 
 ---
 
-## Step 2: Deploy Backend (Render.com) 🐍
+## 🛠️ Step 1: Create a Free PostgreSQL Database (Supabase)
 
-1.  Go to [Render Dashboard](https://dashboard.render.com).
-2.  Click **New +** -> **Web Service**.
-3.  Connect your `smartnews` GitHub repo.
-4.  **Settings**:
-    *   **Name**: `smartnews-api`
-    *   **Root Directory**: `backend`
-    *   **Runtime**: `Python 3`
-    *   **Build Command**: `pip install -r requirements.txt`
-    *   **Start Command**: `uvicorn run_local:app --host 0.0.0.0 --port $PORT`
-    *   **Environment Variables**:
-        *   `PYTHON_VERSION`: `3.9.0` (Recommended)
-5.  Click **Deploy Web Service**.
-6.  **Copy the URL** it gives you (e.g., `https://smartnews-api.onrender.com`).
+1. Go to [Supabase.com](https://supabase.com) and sign up for a free account.
+2. Click **New Project** and name it `smartnews`. Set a secure **Database Password** (save it somewhere safe!).
+3. Choose the region closest to your target audience.
+4. Once the project is provisioned (takes ~1 minute), go to **Project Settings** (gear icon) -> **Database**.
+5. Scroll down to **Connection String** and choose **URI**.
+6. Copy the connection URI. It will look like this:
+   ```text
+   postgresql://postgres.[YOUR_PROJECT_ID]:[YOUR_PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres
+   ```
+   *(Make sure to replace `[YOUR_PASSWORD]` with your actual database password!)*
 
 ---
 
-## Step 3: Deploy Frontend (Vercel) ▲
+## 🐙 Step 2: Push Your Code to GitHub
 
-1.  Go to [Vercel Dashboard](https://vercel.com/dashboard).
-2.  Click **Add New...** -> **Project**.
-3.  Import your `smartnews` GitHub repo.
-4.  **Settings** (Vercel auto-detects most):
-    *   **Framework Preset**: Next.js
-    *   **Root Directory**: `frontend`
-5.  **Environment Variables** (Crucial!):
-    *   Name: `NEXT_PUBLIC_API_URL`
-    *   Value: `https://smartnews-api.onrender.com` (The URL from Step 2 WITHOUT /api/v1)
-    *   *Note: If your backend URL ends in slash, remove it. It should be just the domain.*
-6.  Click **Deploy**.
+If you haven't already pushed your committed changes to GitHub:
+1. Log in to [GitHub.com](https://github.com) and create a new **Public** or **Private** repository named `smartnews`.
+2. Do **not** initialize it with a README or .gitignore.
+3. Run the following commands in your local project terminal:
+   ```bash
+   git remote add origin https://github.com/YOUR_GITHUB_USERNAME/smartnews.git
+   git branch -M main
+   git push -u origin main
+   ```
 
 ---
 
-## 🎉 Success!
+## 🐍 Step 3: Deploy the FastAPI Backend (Render.com)
 
-Your app is now live.
-- **Frontend**: `https://smartnews.vercel.app`
-- **Backend**: `https://smartnews-api.onrender.com/docs`
+1. Go to [Render Dashboard](https://dashboard.render.com) and sign in.
+2. Click **New +** -> **Web Service**.
+3. Connect your `smartnews` GitHub repository.
+4. Configure the following settings:
+   * **Name**: `smartnews-api`
+   * **Root Directory**: `backend`
+   * **Runtime**: `Python 3`
+   * **Build Command**: `pip install -r requirements.txt`
+   * **Start Command**: `gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT`
+5. Click **Advanced** and add the following **Environment Variables**:
+   * `DATABASE_URL`: *Paste the Supabase Connection URI copied in Step 1*
+   * `SECRET_KEY`: *Generate a random key (e.g. run `openssl rand -hex 32`)*
+   * `DEBUG`: `False`
+   * `ENABLE_INLINE_SCRAPER_LOOP`: `True`
+6. Click **Deploy Web Service**.
+7. Once deployed, copy your Render URL (e.g., `https://smartnews-api.onrender.com`).
+
+---
+
+## ▲ Step 4: Deploy the Next.js Frontend (Vercel)
+
+1. Go to [Vercel Dashboard](https://vercel.com).
+2. Click **Add New...** -> **Project**.
+3. Import your `smartnews` GitHub repository.
+4. Configure the settings (Vercel auto-detects Next.js):
+   * **Framework Preset**: Next.js
+   * **Root Directory**: `frontend`
+5. Under **Environment Variables**, add:
+   * **Name**: `NEXT_PUBLIC_API_URL`
+   * **Value**: `https://smartnews-api.onrender.com` *(Use your actual Render URL from Step 3 without `/api/v1` or trailing slash)*
+6. Click **Deploy**.
+
+---
+
+## 🎉 Live URLs
+* **Frontend**: `https://smartnews.vercel.app`
+* **API Documentation**: `https://smartnews-api.onrender.com/docs`
