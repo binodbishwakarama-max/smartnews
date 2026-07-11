@@ -68,15 +68,25 @@ def get_articles(
         Article.publish_date.desc()
     ).offset(offset).limit(limit).all()
     
+    # Batch query all duplicate coverage to avoid N+1 query performance bottleneck
+    cluster_ids = {a.cluster_id for a in articles if a.cluster_id is not None}
+    duplicates_by_cluster = {}
+    if cluster_ids:
+        all_duplicates = db.query(Article).filter(
+            Article.cluster_id.in_(list(cluster_ids))
+        ).all()
+        for dup in all_duplicates:
+            duplicates_by_cluster.setdefault(dup.cluster_id, []).append(dup)
+
     # Serialize articles with duplicate coverage metadata
     serializable_articles = []
     for a in articles:
         other_sources = []
         if a.cluster_id:
-            duplicates = db.query(Article).filter(
-                Article.cluster_id == a.cluster_id,
-                Article.id != a.id
-            ).all()
+            duplicates = [
+                dup for dup in duplicates_by_cluster.get(a.cluster_id, [])
+                if dup.id != a.id
+            ]
             
             seen_sources = {}
             for dup in duplicates:
@@ -270,7 +280,8 @@ def get_article_by_id(article_id: int, db: Session = Depends(get_db)):
     return article
 
 @router.post("/{article_id}/view")
-def increment_view_count(article_id: int, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def increment_view_count(article_id: int, request: Request, db: Session = Depends(get_db)):
     """
     Increment the view_count for an article.
     Called by the frontend when a reader opens an article in ReaderModal.

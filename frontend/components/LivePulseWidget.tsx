@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../lib/config';
 import { useReader } from '../contexts/ReaderContext';
 import { Volume2, VolumeX, Activity, Radio, Sparkles } from 'lucide-react';
 import type { Article } from '../app/page';
+import { safeApiRequest } from '../lib/api';
 
 interface LiveEvent {
     id: number;
@@ -80,10 +81,12 @@ export default function LivePulseWidget() {
 
         async function seedTicker() {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/v1/articles?limit=4`);
-                if (!res.ok) return;
-                const data = await res.json();
-                const items = data.articles || data || [];
+                const data = await safeApiRequest<{ articles?: Article[] } | Article[]>(
+                    `${API_BASE_URL}/api/v1/articles?limit=4`,
+                    { skipRetry: false }
+                );
+                if (!data) return;
+                const items = Array.isArray(data) ? data : data.articles || [];
                 const seeded: LiveEvent[] = items.map((a: any) => ({
                     id: a.id,
                     title: a.title,

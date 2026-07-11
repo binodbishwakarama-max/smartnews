@@ -62,6 +62,9 @@ def check_and_add_columns():
     try:
         from sqlalchemy import inspect
         inspector = inspect(engine)
+        if not inspector.has_table("articles"):
+            logger.info("Table 'articles' does not exist yet. Skipping database migrations.")
+            return
         columns = [col["name"] for col in inspector.get_columns("articles")]
         
         # Column migrations

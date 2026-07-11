@@ -4,6 +4,7 @@ import { AlertTriangle, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Article } from '../app/page';
 import { API_BASE_URL, API_ENDPOINTS } from '../lib/config';
 import { useReader } from '../contexts/ReaderContext';
+import { safeApiRequest } from '../lib/api';
 
 const MAX_TICKER_ITEMS = 5;
 const ROTATE_INTERVAL = 5000; // ms between auto-rotations
@@ -20,10 +21,12 @@ export default function BreakingNewsBar() {
     useEffect(() => {
         async function loadRecent() {
             try {
-                const res = await fetch(`${API_ENDPOINTS.ARTICLES}?limit=5&offset=0`);
-                if (!res.ok) return;
-                const data = await res.json();
-                const items: Article[] = (data.articles || data || []).slice(0, MAX_TICKER_ITEMS);
+                const data = await safeApiRequest<{ articles?: Article[] } | Article[]>(
+                    `${API_ENDPOINTS.ARTICLES}?limit=5&offset=0`,
+                    { skipRetry: false }
+                );
+                if (!data) return;
+                const items: Article[] = (Array.isArray(data) ? data : data.articles || []).slice(0, MAX_TICKER_ITEMS);
                 if (items.length > 0) {
                     setArticles(items);
                     setVisible(true);

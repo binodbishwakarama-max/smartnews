@@ -89,3 +89,38 @@ def test_login_fails_bad_password(client: TestClient):
         data={"username": "nobody123", "password": "wrong"},
     )
     assert response.status_code == 400
+
+
+def test_view_increment_rate_limit(client: TestClient):
+    """View count endpoint increments views and is rate-limited."""
+    from app.db.session import SessionLocal
+    from app.models.article import Article
+    from datetime import datetime, timezone
+    
+    db = SessionLocal()
+    try:
+        article = Article(
+            title="Test Rate Limit Article",
+            content="This is content for testing view count rate limit.",
+            source="Test Source",
+            url="http://example.com/test-view-limit",
+            category="Technology",
+            publish_date=datetime.now(timezone.utc)
+        )
+        db.add(article)
+        db.commit()
+        db.refresh(article)
+        article_id = article.id
+    finally:
+        db.close()
+
+    # Make 10 successful requests
+    for i in range(10):
+        res = client.post(f"/api/v1/articles/{article_id}/view")
+        assert res.status_code == 200
+        assert "view_count" in res.json()
+        
+    # The 11th request must exceed the 10/minute rate limit
+    res = client.post(f"/api/v1/articles/{article_id}/view")
+    assert res.status_code == 429
+
