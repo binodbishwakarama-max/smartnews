@@ -5,9 +5,12 @@ import Header from "../components/Header";
 import "./globals.css";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { BookmarkProvider } from "../contexts/BookmarkContext";
+import { ReaderProvider } from "../contexts/ReaderContext";
 import { AuthProvider } from "../contexts/AuthContext";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import ServiceWorkerRegister from "../components/ServiceWorkerRegister";
+import { ReadingHistoryProvider } from "../contexts/ReadingHistoryContext";
+import BreakingNewsBar from "../components/BreakingNewsBar";
 
 export const metadata: Metadata = {
   title: "Smart News | Global Newsroom",
@@ -57,18 +60,23 @@ export default function RootLayout({
           <ServiceWorkerRegister />
           <AuthProvider>
           <ThemeProvider>
-            <BookmarkProvider>
-              <ErrorBoundary>
-                <Suspense
-                  fallback={
-                    <div className="h-24 bg-muted animate-pulse border-b-2 border-black" />
-                  }
-                >
-                  <Header />
-                </Suspense>
-                <main role="main">{children}</main>
-              </ErrorBoundary>
-            </BookmarkProvider>
+            <ReadingHistoryProvider>
+              <BookmarkProvider>
+                <ReaderProvider>
+                  <ErrorBoundary>
+                    <BreakingNewsBar />
+                    <Suspense
+                      fallback={
+                        <div className="h-24 bg-muted animate-pulse border-b-2 border-black" />
+                      }
+                    >
+                      <Header />
+                    </Suspense>
+                    <main role="main">{children}</main>
+                  </ErrorBoundary>
+                </ReaderProvider>
+              </BookmarkProvider>
+            </ReadingHistoryProvider>
           </ThemeProvider>
           </AuthProvider>
         </body>

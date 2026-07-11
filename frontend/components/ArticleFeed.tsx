@@ -1,12 +1,15 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { NewsCard, LeadStory } from './EditorialComponents';
 import dynamic from 'next/dynamic';
 
 const RecommendationRail = dynamic(() => import('./RecommendationRail'), { ssr: false });
 import type { Article } from '../app/page';
-import { API_ENDPOINTS } from '../lib/config';
+import { API_ENDPOINTS, API_BASE_URL } from '../lib/config';
 import { safeApiRequest } from '../lib/api';
+import { Radio, Zap, Keyboard, X } from 'lucide-react';
+import { useReader } from '../contexts/ReaderContext';
+import { useBookmarks } from '../contexts/BookmarkContext';
 
 interface ArticleFeedProps {
     initialArticles: Article[];
@@ -23,20 +26,244 @@ interface ArticlesResponse {
 const ARTICLES_PER_PAGE = 20;
 const RAIL_INSERT_POSITION = 6; // Insert rail after 6th grid item
 
+// How many new articles queue up before auto-inserting (0 = instant auto-insert)
+const AUTO_INSERT_THRESHOLD = 3;
+
 export default function ArticleFeed({ initialArticles, category, showHero = false }: ArticleFeedProps) {
     const [articles, setArticles] = useState<Article[]>(initialArticles);
+    const [incomingArticles, setIncomingArticles] = useState<Article[]>([]);
+    const [justInsertedIds, setJustInsertedIds] = useState<Set<number>>(new Set());
     const [isLoading, setIsLoading] = useState(false);
-    const [hasMore, setHasMore] = useState(true); // Always true for X-like infinite scrolling
-    const [totalCount, setTotalCount] = useState(initialArticles.length * 2); // Estimate
+    const [hasMore, setHasMore] = useState(true);
+    const [totalCount, setTotalCount] = useState(initialArticles.length * 2);
     const [offset, setOffset] = useState(ARTICLES_PER_PAGE);
+    const [liveConnected, setLiveConnected] = useState(false);
+    const [liveCount, setLiveCount] = useState(0); // total articles received via SSE this session
+
+    // X.com Polish Keyboard Nav States & Refs
+    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+    const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+    const { openReader } = useReader();
+    const { toggleBookmark, isBookmarked } = useBookmarks();
+    const cardRefs = useRef<React.RefObject<HTMLDivElement | null>[]>([]);
+
+    if (cardRefs.current.length !== articles.length) {
+        cardRefs.current = Array(articles.length)
+            .fill(null)
+            .map((_, i) => cardRefs.current[i] || { current: null });
+    }
 
     // Reset state when category changes
     useEffect(() => {
         setArticles(initialArticles);
+        setIncomingArticles([]);
+        setJustInsertedIds(new Set());
         setHasMore(true);
         setOffset(ARTICLES_PER_PAGE);
         setIsLoading(false);
+        setSelectedIndex(null);
     }, [category, initialArticles]);
+
+    // Keyboard navigation event handler
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const activeEl = document.activeElement;
+            if (
+                activeEl && 
+                (activeEl.tagName === 'INPUT' || 
+                 activeEl.tagName === 'TEXTAREA' || 
+                 activeEl.getAttribute('contenteditable') === 'true')
+            ) {
+                return;
+            }
+
+            const key = e.key.toLowerCase();
+
+            if (e.key === '?') {
+                e.preventDefault();
+                setShowShortcutsHelp(prev => !prev);
+                return;
+            }
+
+            if (key === 'j') {
+                e.preventDefault();
+                setSelectedIndex(prev => {
+                    const next = prev === null ? 0 : Math.min(articles.length - 1, prev + 1);
+                    setTimeout(() => {
+                        const target = cardRefs.current[next]?.current;
+                        if (target) {
+                            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }, 50);
+                    return next;
+                });
+            } else if (key === 'k') {
+                e.preventDefault();
+                setSelectedIndex(prev => {
+                    const next = prev === null ? 0 : Math.max(0, prev - 1);
+                    setTimeout(() => {
+                        const target = cardRefs.current[next]?.current;
+                        if (target) {
+                            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }, 50);
+                    return next;
+                });
+            } else if (key === 'o' || e.key === 'Enter') {
+                if (selectedIndex !== null && articles[selectedIndex]) {
+                    e.preventDefault();
+                    openReader(articles[selectedIndex].id);
+                }
+            } else if (key === 'l') {
+                if (selectedIndex !== null && articles[selectedIndex]) {
+                    e.preventDefault();
+                    const art = articles[selectedIndex];
+                    void toggleBookmark(art);
+                    
+                    const isAdded = !isBookmarked(art.id);
+                    const toast = document.createElement('div');
+                    toast.textContent = isAdded ? '📌 Saved to Bookmarks' : '🗑️ Removed Bookmark';
+                    toast.style.cssText = 'position:fixed;bottom:24px;left:24px;background:#111;color:#fff;padding:10px 18px;font-size:11px;font-family:monospace;font-weight:700;letter-spacing:0.1em;z-index:9999;border:1px solid #333;box-shadow:4px 4px 0px 0px #e11d48;';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 1800);
+                }
+            } else if (key === 's') {
+                if (selectedIndex !== null && articles[selectedIndex]) {
+                    e.preventDefault();
+                    const art = articles[selectedIndex];
+                    const shareData = { title: art.title, url: art.url, text: art.summary || art.title };
+                    void (async () => {
+                        try {
+                            if (navigator.share && navigator.canShare?.(shareData)) {
+                                await navigator.share(shareData);
+                            } else {
+                                await navigator.clipboard.writeText(art.url);
+                                const toast = document.createElement('div');
+                                toast.textContent = '🔗 Link copied to clipboard!';
+                                toast.style.cssText = 'position:fixed;bottom:24px;left:24px;background:#111;color:#fff;padding:10px 18px;font-size:11px;font-family:monospace;font-weight:700;letter-spacing:0.1em;z-index:9999;border:1px solid #333;box-shadow:4px 4px 0px 0px #e11d48;';
+                                document.body.appendChild(toast);
+                                setTimeout(() => toast.remove(), 1800);
+                            }
+                        } catch {}
+                    })();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [articles, selectedIndex, openReader, toggleBookmark, isBookmarked]);
+
+
+    // Auto-insert articles that have queued up
+    const flushIncoming = useCallback(() => {
+        setIncomingArticles(prevIncoming => {
+            if (prevIncoming.length === 0) return prevIncoming;
+            const ids = new Set(prevIncoming.map(a => a.id));
+            setJustInsertedIds(ids);
+            setArticles(prev => {
+                const existingIds = new Set(prev.map(a => a.id));
+                const toInsert = prevIncoming.filter(a => !existingIds.has(a.id));
+                return [...toInsert, ...prev];
+            });
+            // Clear the flash effect after 2.5s
+            setTimeout(() => setJustInsertedIds(new Set()), 2500);
+            return [];
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, []);
+
+    // Real-time EventSource listener
+    useEffect(() => {
+        const streamUrl = `${API_BASE_URL}/api/v1/articles/stream`;
+        let eventSource: EventSource;
+        let reconnectDelay = 1000;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+        let mounted = true;
+
+        function connect() {
+            eventSource = new EventSource(streamUrl);
+
+            eventSource.onopen = () => {
+                if (!mounted) return;
+                setLiveConnected(true);
+                reconnectDelay = 1000; // reset backoff on successful connection
+            };
+
+            eventSource.onmessage = (event) => {
+                if (!mounted) return;
+                try {
+                    const newArticle = JSON.parse(event.data) as Article;
+
+                    // Filter by category if viewing a category feed
+                    if (category && category.toLowerCase() !== 'all') {
+                        const match = newArticle.category.toLowerCase().includes(category.toLowerCase());
+                        if (!match) return;
+                    }
+
+                    setLiveCount(c => c + 1);
+
+                    setArticles(prevArticles => {
+                        const exists = prevArticles.some(a => a.id === newArticle.id);
+                        if (exists) return prevArticles;
+
+                        setIncomingArticles(prevIncoming => {
+                            const incomingExists = prevIncoming.some(a => a.id === newArticle.id);
+                            if (incomingExists) return prevIncoming;
+                            const next = [newArticle, ...prevIncoming];
+
+                            // Auto-insert immediately when we hit the threshold
+                            if (next.length >= AUTO_INSERT_THRESHOLD) {
+                                // Schedule flush outside this render cycle
+                                setTimeout(() => {
+                                    setIncomingArticles(q => {
+                                        if (q.length === 0) return q;
+                                        const ids = new Set(q.map(a => a.id));
+                                        setJustInsertedIds(ids);
+                                        setArticles(prev => {
+                                            const existingIds = new Set(prev.map(a => a.id));
+                                            const toInsert = q.filter(a => !existingIds.has(a.id));
+                                            return [...toInsert, ...prev];
+                                        });
+                                        setTimeout(() => setJustInsertedIds(new Set()), 2500);
+                                        return [];
+                                    });
+                                }, 0);
+                            }
+
+                            return next;
+                        });
+
+                        return prevArticles;
+                    });
+                } catch (err) {
+                    console.error('Error parsing real-time article event:', err);
+                }
+            };
+
+            eventSource.onerror = () => {
+                if (!mounted) return;
+                setLiveConnected(false);
+                eventSource.close();
+                // Exponential backoff reconnection
+                reconnectTimer = setTimeout(() => {
+                    if (mounted) {
+                        reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+                        connect();
+                    }
+                }, reconnectDelay);
+            };
+        }
+
+        connect();
+
+        return () => {
+            mounted = false;
+            setLiveConnected(false);
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            eventSource?.close();
+        };
+    }, [category]);
 
     const loadMore = async () => {
         if (isLoading) return;
@@ -44,7 +271,6 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
         setIsLoading(true);
         try {
             let currentOffset = offset;
-            // If we have hit or exceeded the known total count, cycle back to the beginning
             if (totalCount > 0 && currentOffset >= totalCount) {
                 currentOffset = 0;
             }
@@ -52,14 +278,10 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
             const url = `${API_ENDPOINTS.ARTICLES}?limit=${ARTICLES_PER_PAGE}&offset=${currentOffset}${category ? `&category=${encodeURIComponent(category)}` : ''}`;
             const data = await safeApiRequest<ArticlesResponse | Article[]>(url, { skipRetry: true });
 
-            if (!data) {
-                return;
-            }
+            if (!data) return;
 
             let newArticles = Array.isArray(data) ? data : data.articles || [];
 
-            // If the endpoint returns no articles (e.g. database cleared or exact offset mismatch),
-            // cycle to offset 0 and try loading the first page again
             if (newArticles.length === 0 && currentOffset > 0) {
                 const retryUrl = `${API_ENDPOINTS.ARTICLES}?limit=${ARTICLES_PER_PAGE}&offset=0${category ? `&category=${encodeURIComponent(category)}` : ''}`;
                 const retryData = await safeApiRequest<ArticlesResponse | Article[]>(retryUrl, { skipRetry: true });
@@ -68,20 +290,17 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
             }
 
             if (newArticles.length > 0) {
-                // Append all newly fetched articles (allowing duplicates in infinite scrolling cycle)
                 setArticles(prev => [...prev, ...newArticles]);
-                
                 const nextTotal = Array.isArray(data) ? totalCount : data.total ?? totalCount;
                 setTotalCount(nextTotal);
                 setOffset(currentOffset + ARTICLES_PER_PAGE);
             } else {
-                // If there are literally 0 articles in the database for this query/category, stop loading
                 if (articles.length === 0) {
                     setHasMore(false);
                 }
             }
         } catch {
-            // Keep hasMore true so we can retry on next scroll attempt/intersection
+            // Keep hasMore true for retry
         } finally {
             setIsLoading(false);
         }
@@ -96,7 +315,7 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
                     loadMore();
                 }
             },
-            { threshold: 0.1, rootMargin: '600px' } // Increased rootMargin for a smoother pre-load experience
+            { threshold: 0.1, rootMargin: '600px' }
         );
 
         if (observerTarget.current) {
@@ -110,30 +329,80 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
         };
     }, [hasMore, isLoading, observerTarget]);
 
-    // Determine which articles to show
     const displayArticles = showHero ? articles.slice(1) : articles;
     const heroArticle = showHero && articles.length > 0 ? articles[0] : null;
 
-    // Split articles for rail injection
     const articlesBeforeRail = displayArticles.slice(0, RAIL_INSERT_POSITION);
     const articlesAfterRail = displayArticles.slice(RAIL_INSERT_POSITION);
 
     return (
         <>
+            {/* ── Live Status Bar ── */}
+            <div className="flex items-center gap-3 mb-8 pb-4 border-b border-border">
+                <span className="flex items-center gap-1.5">
+                    <span
+                        className={`w-2 h-2 rounded-full ${liveConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400'}`}
+                    />
+                    <span className={`text-[10px] font-mono font-black uppercase tracking-widest ${liveConnected ? 'text-green-600 dark:text-green-400' : 'text-red-400'}`}>
+                        {liveConnected ? 'Live' : 'Reconnecting...'}
+                    </span>
+                </span>
+                {liveCount > 0 && (
+                    <span className="text-[9px] font-mono text-secondary uppercase tracking-widest">
+                        +{liveCount} ingested this session
+                    </span>
+                )}
+                <span className="ml-auto text-[9px] font-mono text-secondary uppercase tracking-widest hidden sm:block">
+                    Continuous ingestion · Sources rotate every ~56s
+                </span>
+            </div>
+
+            {/* ── Incoming Articles Notification (queued but under threshold) ── */}
+            {incomingArticles.length > 0 && incomingArticles.length < AUTO_INSERT_THRESHOLD && (
+                <div className="flex justify-center mb-8 sticky top-24 z-40">
+                    <button
+                        onClick={flushIncoming}
+                        className="flex items-center gap-2.5 px-6 py-3 bg-accent text-white font-mono font-black text-[10px] uppercase tracking-widest rounded-none border-2 border-brand shadow-[4px_4px_0px_0px_var(--color-brand)] dark:shadow-[4px_4px_0px_0px_var(--color-border)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                    >
+                        <Radio className="w-4 h-4 text-white animate-pulse" />
+                        {incomingArticles.length === 1
+                            ? 'LIVE INGEST // 1 NEW STORY — TAP TO READ'
+                            : `LIVE INGEST // ${incomingArticles.length} NEW STORIES — TAP TO READ`}
+                        <Zap className="w-3.5 h-3.5 text-white/90" />
+                    </button>
+                </div>
+            )}
+
             {heroArticle && (
-                <div className="mb-12">
-                    <LeadStory article={heroArticle} />
+                <div className={`mb-12 ${justInsertedIds.has(heroArticle.id) ? 'animate-live-flash' : ''}`}>
+                    <LeadStory 
+                        article={heroArticle} 
+                        isSelected={selectedIndex === 0}
+                        indexRef={cardRefs.current[0]}
+                    />
                 </div>
             )}
 
             {/* First Block of Grid Articles */}
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16 ${category ? 'py-4' : ''}`}>
-                {articlesBeforeRail.map((art, idx) => (
-                    <NewsCard key={`before-${art.id}-${idx}`} article={art} />
-                ))}
+                {articlesBeforeRail.map((art, idx) => {
+                    const idxInArticles = showHero ? idx + 1 : idx;
+                    return (
+                        <div
+                            key={`before-${art.id}-${idx}`}
+                            className={justInsertedIds.has(art.id) ? 'animate-live-flash' : ''}
+                        >
+                            <NewsCard 
+                                article={art} 
+                                isSelected={selectedIndex === idxInArticles}
+                                indexRef={cardRefs.current[idxInArticles]}
+                            />
+                        </div>
+                    );
+                })}
             </div>
 
-            {/* Premium Recommendation Rail (Only show on homepage/first load to avoid clutter) */}
+            {/* Premium Recommendation Rail */}
             {!category && displayArticles.length >= RAIL_INSERT_POSITION && (
                 <div className="full-width-breakout">
                     <RecommendationRail
@@ -145,10 +414,24 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
 
             {/* Remaining Grid Articles */}
             {articlesAfterRail.length > 0 && (
-                <div className={`grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16 mt-16`}>
-                    {articlesAfterRail.map((art, idx) => (
-                        <NewsCard key={`after-${art.id}-${idx}`} article={art} />
-                    ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-16 mt-16">
+                    {articlesAfterRail.map((art, idx) => {
+                        const idxInArticles = showHero 
+                            ? idx + 1 + articlesBeforeRail.length 
+                            : idx + articlesBeforeRail.length;
+                        return (
+                            <div
+                                key={`after-${art.id}-${idx}`}
+                                className={justInsertedIds.has(art.id) ? 'animate-live-flash' : ''}
+                            >
+                                <NewsCard 
+                                    article={art} 
+                                    isSelected={selectedIndex === idxInArticles}
+                                    indexRef={cardRefs.current[idxInArticles]}
+                                />
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
@@ -164,6 +447,65 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
                     <div className="text-center text-secondary py-8">
                         <p className="text-sm tracking-widest uppercase">No articles available</p>
                     </div>
+                )}
+            </div>
+
+            {/* ── Keyboard Shortcuts Floating Helper (X-style) ── */}
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2 font-mono">
+                {showShortcutsHelp ? (
+                    <div className="bg-card border-2 border-brand dark:border-border p-4 shadow-[4px_4px_0px_0px_var(--color-brand)] dark:shadow-[4px_4px_0px_0px_var(--color-border)] rounded-none w-64 max-w-sm animate-fadeIn">
+                        <div className="flex items-center justify-between border-b border-border pb-2 mb-3">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5">
+                                <Keyboard className="w-3.5 h-3.5 text-accent" />
+                                Keyboard Navigation
+                            </span>
+                            <button 
+                                onClick={() => setShowShortcutsHelp(false)}
+                                className="text-secondary hover:text-primary transition-colors cursor-pointer"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                        <div className="space-y-2 text-[10px]">
+                            <div className="flex justify-between items-center">
+                                <span className="text-secondary">Next Article</span>
+                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">J</kbd>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-secondary">Previous Article</span>
+                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">K</kbd>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-secondary">Open Article</span>
+                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">Enter</kbd>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-secondary">Bookmark Article</span>
+                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">L</kbd>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-secondary">Share Link</span>
+                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">S</kbd>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-secondary">Close Reader</span>
+                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">Esc</kbd>
+                            </div>
+                            <div className="flex justify-between items-center border-t border-border/45 pt-2 mt-2">
+                                <span className="text-secondary">Toggle Shortcuts</span>
+                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">?</kbd>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => setShowShortcutsHelp(true)}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border hover:border-brand dark:hover:border-border text-secondary hover:text-primary transition-all duration-200 text-[10px] font-bold tracking-widest uppercase cursor-pointer shadow-sm"
+                        title="Show Keyboard Shortcuts (?)"
+                    >
+                        <Keyboard className="w-3.5 h-3.5 text-accent" />
+                        <span>Shortcuts (?)</span>
+                    </button>
                 )}
             </div>
         </>

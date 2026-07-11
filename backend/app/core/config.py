@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     # Database
     # Fallback to SQLite if no Docker/Postgres available
     DATABASE_URL: str = "sqlite:///./news.db"
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 30
+    DB_POOL_RECYCLE: int = 1800
+    DB_POOL_TIMEOUT: int = 30
     
     # Security
     SECRET_KEY: str = "CHANGE_THIS_IN_PRODUCTION"
@@ -64,5 +68,18 @@ class Settings(BaseSettings):
         super().__init__(**kwargs)
         db_display = self.DATABASE_URL.split("@")[-1] if "@" in self.DATABASE_URL else self.DATABASE_URL
         print(f"[OK] Loaded Config with DB: {db_display}")
+        
+        # Security validation for settings
+        if self.SECRET_KEY == "CHANGE_THIS_IN_PRODUCTION":
+            if not self.DEBUG:
+                raise ValueError(
+                    "CRITICAL CONFIG ERROR: SECRET_KEY cannot remain set to "
+                    "'CHANGE_THIS_IN_PRODUCTION' in a production environment."
+                )
+            else:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "SECRET_KEY is insecure. Change it in production environments."
+                )
 
 settings = Settings()

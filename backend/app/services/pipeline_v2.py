@@ -6,6 +6,8 @@ from app.models.article import Article
 from app.services.scraper_v2 import scraper_v2
 from app.services.categorizer import smart_categorize
 from app.services.deduplicator import deduplicator
+from app.utils.source import normalize_source_domain
+from app.services.quality import quality_engine
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,9 @@ def process_and_save_refined_article(data: dict, source_name: str, hint_category
             from app.utils.placeholder_images import generate_placeholder_image
             image_url = generate_placeholder_image(category, data['title'])
         
+        # Calculate dynamic quality scores using quality_engine
+        q_metrics = quality_engine.calculate_quality_score(data['content'], data['title'])
+        
         # 6. Save to DB
         article = Article(
             title=data['title'],
@@ -46,15 +51,42 @@ def process_and_save_refined_article(data: dict, source_name: str, hint_category
             image_url=image_url,
             publish_date=data['publish_date'],
             author=data['author'],
-            source=source_name,
+            source=normalize_source_domain(source_name),
             category=category,
             embedding=embedding,
-            quality_score=80.0,
-            feed_score=80.0,
+            quality_score=q_metrics['score'],
+            readability_score=q_metrics['readability'],
+            length_score=q_metrics['length_score'],
+            readability_sub_score=q_metrics['readability_sub_score'],
+            clickbait_penalty=q_metrics['clickbait_penalty'],
+            caps_penalty=q_metrics['caps_penalty'],
+            feed_score=q_metrics['score'],
             summary=data['content'][:250] + "..."
         )
         db.add(article)
         db.commit()
+        
+        # Refresh to get DB-generated ID and default fields
+        db.refresh(article)
+        
+        # Publish real-time event to SSE listeners
+        try:
+            from app.core.pubsub import pubsub
+            pubsub.publish({
+                "id": article.id,
+                "title": article.title,
+                "summary": article.summary,
+                "url": article.url,
+                "image_url": article.image_url,
+                "category": article.category,
+                "source": article.source,
+                "publish_date": article.publish_date.isoformat() if article.publish_date else datetime.utcnow().isoformat(),
+                "quality_score": article.quality_score,
+                "feed_score": article.feed_score
+            })
+        except Exception as pub_err:
+            logger.error(f"Failed to publish new article event: {pub_err}")
+            
         return True
     except Exception as e:
         logger.error(f"Error in premium pipeline: {e}")

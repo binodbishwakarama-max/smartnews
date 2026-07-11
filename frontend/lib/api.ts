@@ -10,6 +10,7 @@
  */
 
 import { API_BASE_URL } from './config';
+import type { Article } from '../app/page';
 
 const DEFAULT_TIMEOUT = 10000;
 const MAX_RETRIES = 3;
@@ -281,5 +282,30 @@ export async function cleanupOldArticles(daysOld: number = 30): Promise<ScraperC
     return apiRequest<ScraperCleanupResponse>(`/api/v1/scraper/cleanup?days_old=${daysOld}`, {
         method: 'DELETE',
         requireAuth: true,
+    });
+}
+
+export interface ArticleScoreBreakdown {
+    id: number;
+    title: string;
+    source: string;
+    quality_score: number;
+    length_score: number;
+    readability_sub_score: number;
+    clickbait_penalty: number;
+    caps_penalty: number;
+    created_at: string;
+}
+
+export async function getRecentScores(limit: number = 20): Promise<ArticleScoreBreakdown[]> {
+    return apiRequest<ArticleScoreBreakdown[]>(`/api/v1/scraper/recent-scores?limit=${limit}`, {
+        method: 'GET',
+        requireAuth: true,
+    });
+}
+
+export async function getArticleById(id: number): Promise<Article> {
+    return apiRequest<Article>(`/api/v1/articles/${id}`, {
+        method: 'GET',
     });
 }

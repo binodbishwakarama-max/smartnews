@@ -1,5 +1,6 @@
 import { NewsCard } from '@/components/EditorialComponents';
 import ArticleFeed from '@/components/ArticleFeed';
+import ForYouFeed from '@/components/ForYouFeed';
 import Link from 'next/link';
 import { API_ENDPOINTS } from '@/lib/config';
 
@@ -15,6 +16,13 @@ export interface Article {
   publish_date: string;
   quality_score?: number;
   feed_score?: number;
+  other_sources?: {
+    id: number;
+    source: string;
+    url: string;
+    title: string;
+    quality_score: number;
+  }[];
 }
 
 const CATEGORIES = ['World', 'Business', 'Technology', 'AI & Startups', 'Science', 'Health', 'Politics', 'Culture', 'Sports', 'Environment', 'Education'];
@@ -72,7 +80,7 @@ export default async function Home({
     <div className="min-h-screen bg-background text-primary selection:bg-accent selection:text-white">
       <main className="max-w-7xl mx-auto px-6 py-10">
 
-        {category && (
+        {category && category !== 'For You' && (
           <div className="mb-12 border-b-4 border-black pb-4 flex justify-between items-end">
             <h2 className="text-6xl font-serif font-black tracking-tighter uppercase">{category}</h2>
             <span className="text-[11px] font-black uppercase tracking-[0.2em] mb-2">Latest Stories</span>
@@ -82,11 +90,15 @@ export default async function Home({
         <div className="flex flex-col lg:flex-row gap-12">
 
           <div className="flex-1 lg:max-w-4xl border-r border-border pr-12">
-            <ArticleFeed
-              initialArticles={articles}
-              category={category}
-              showHero={!category}
-            />
+            {category === 'For You' ? (
+              <ForYouFeed />
+            ) : (
+              <ArticleFeed
+                initialArticles={articles}
+                category={category}
+                showHero={!category}
+              />
+            )}
           </div>
 
           <div className="lg:w-80 flex-shrink-0">

@@ -6,7 +6,7 @@ def test_login():
     signup_url = "http://127.0.0.1:8000/api/v1/auth/signup"
     try:
         data = {"username": "testuser", "password": "testpassword"}
-        r = requests.post(signup_url, params=data)
+        r = requests.post(signup_url, json=data)
         print(f"Signup Status: {r.status_code}")
         print(f"Signup Response: {r.text}")
     except Exception as e:

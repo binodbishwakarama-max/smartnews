@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { getScraperStatus, triggerScraping, cleanupOldArticles, ScraperStatus } from '../../lib/api';
+import { getScraperStatus, triggerScraping, cleanupOldArticles, ScraperStatus, getRecentScores, ArticleScoreBreakdown } from '../../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -39,6 +39,8 @@ export default function AdminDashboard() {
     const [cleanupDays, setCleanupDays] = useState(30);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
+    const [recentScores, setRecentScores] = useState<ArticleScoreBreakdown[]>([]);
+    const [loadingScores, setLoadingScores] = useState(false);
 
     useEffect(() => {
         if (isLoaded && !isSignedIn) {
@@ -48,6 +50,7 @@ export default function AdminDashboard() {
 
         if (isSignedIn) {
             loadStatus();
+            loadRecentScores();
         }
     }, [isLoaded, isSignedIn, router]);
 
@@ -62,6 +65,18 @@ export default function AdminDashboard() {
             console.error('Error loading status:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadRecentScores = async () => {
+        try {
+            setLoadingScores(true);
+            const data = await getRecentScores(15);
+            setRecentScores(data);
+        } catch (err) {
+            console.error('Error loading recent scores:', err);
+        } finally {
+            setLoadingScores(false);
         }
     };
 
@@ -343,6 +358,97 @@ export default function AdminDashboard() {
                         </CardContent>
                     </Card>
                 )}
+
+                {/* AI Quality Score Composition Audit */}
+                <Card className="mt-8 rounded-2xl border border-border/80 dark:border-border/30 bg-card/40 dark:bg-paper/45 backdrop-blur-md shadow-lg overflow-hidden">
+                    <CardHeader className="border-b border-border/40 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <CardTitle className="flex items-center gap-2 font-serif text-2xl font-black">
+                                <Sparkles className="h-5 w-5 text-accent animate-pulse" />
+                                AI Quality Score Composition Audit
+                            </CardTitle>
+                            <CardDescription className="text-xs font-bold uppercase tracking-wider text-secondary">
+                                Live breakdown of quality index variables: Base (2.0) + Length + Readability - Penalties
+                            </CardDescription>
+                        </div>
+                        <Button
+                            onClick={loadRecentScores}
+                            disabled={loadingScores}
+                            size="sm"
+                            variant="outline"
+                            className="text-xs font-black uppercase tracking-wider border-2 hover:bg-muted"
+                        >
+                            {loadingScores ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                            Sync Scores
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        {loadingScores && recentScores.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 gap-4">
+                                <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-secondary">Syncing Score Composition...</span>
+                            </div>
+                        ) : recentScores.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-border/60 text-[10px] font-black uppercase tracking-wider text-secondary">
+                                            <th className="pb-3 pl-2">Article Title & Source</th>
+                                            <th className="pb-3 text-center">Base</th>
+                                            <th className="pb-3 text-center">Length</th>
+                                            <th className="pb-3 text-center">Readability</th>
+                                            <th className="pb-3 text-center">Clickbait</th>
+                                            <th className="pb-3 text-center">Caps</th>
+                                            <th className="pb-3 text-right pr-2">Total Score</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border/30">
+                                        {recentScores.map((item) => {
+                                            const base = 2.0;
+                                            const lenVal = item.length_score / 10;
+                                            const readVal = item.readability_sub_score / 10;
+                                            const cbVal = item.clickbait_penalty / 10;
+                                            const capsVal = item.caps_penalty / 10;
+                                            const totalVal = item.quality_score / 10;
+
+                                            return (
+                                                <tr key={item.id} className="hover:bg-muted/30 transition-colors text-xs">
+                                                    <td className="py-4 pl-2 pr-4 max-w-md">
+                                                        <div className="font-serif font-bold text-primary line-clamp-1 hover:text-accent transition-colors">
+                                                            {item.title}
+                                                        </div>
+                                                        <div className="text-[9px] font-black uppercase tracking-wider text-secondary mt-1">
+                                                            {item.source}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 text-center font-medium text-secondary">{base.toFixed(1)}</td>
+                                                    <td className="py-4 text-center font-medium text-green-600 dark:text-green-400">+{lenVal.toFixed(1)}</td>
+                                                    <td className="py-4 text-center font-medium text-green-600 dark:text-green-400">+{readVal.toFixed(1)}</td>
+                                                    <td className={`py-4 text-center font-medium ${cbVal < 0 ? 'text-rose-500 font-bold' : 'text-secondary'}`}>
+                                                        {cbVal < 0 ? `${cbVal.toFixed(1)}` : '-'}
+                                                    </td>
+                                                    <td className={`py-4 text-center font-medium ${capsVal < 0 ? 'text-rose-500 font-bold' : 'text-secondary'}`}>
+                                                        {capsVal < 0 ? `${capsVal.toFixed(1)}` : '-'}
+                                                    </td>
+                                                    <td className="py-4 text-right pr-2">
+                                                        <span className="font-black px-2.5 py-1 rounded bg-accent/10 dark:bg-accent/20 text-accent text-sm">
+                                                            {totalVal.toFixed(1)}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl">
+                                <Sparkles className="w-8 h-8 mx-auto text-secondary mb-2" />
+                                <p className="text-xs font-black uppercase tracking-widest text-secondary">No recent quality score audits available</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

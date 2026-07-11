@@ -1,10 +1,19 @@
 import logging
 import re
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Per-keyword repeat cap: no single keyword can contribute more than this
+# many occurrences to a category score, regardless of how often it appears
+# in the text. Prevents "trade" ×30 from overwhelming a category.
+# ---------------------------------------------------------------------------
+MAX_KEYWORD_OCCURRENCES = 3
+
+# ---------------------------------------------------------------------------
 # Custom Keyword Dictionaries per Category
+# ---------------------------------------------------------------------------
 CATEGORY_KEYWORDS = {
     'Technology': ['tech', 'software', 'hardware', 'google', 'apple', 'meta', 'microsoft', 'semiconductor', 'cybersecurity', 'gadget', 'computing', 'internet', 'broadband'],
     'AI & Startups': ['ai ', 'artificial intelligence', 'machine learning', 'deep learning', 'openai', 'startup', 'venture capital', 'funding round', 'unicorn', 'y combinator', 'llm', 'chatbot', 'neural network'],
@@ -19,7 +28,89 @@ CATEGORY_KEYWORDS = {
     'Culture': ['art', 'music', 'movie', 'film', 'theater', 'culture', 'fashion', 'lifestyle', 'entertainment', 'celebrity', 'travel', 'hollywood', 'museum'],
 }
 
-def classify_by_url(url: str) -> str:
+# ---------------------------------------------------------------------------
+# Keyword signal tiers — weights applied on top of the base length bonus.
+#
+# HIGH_SIGNAL (3.0×): words that almost never appear outside their own
+#   category. E.g. "touchdown" is Sports, "chromosome" is Science, "IPO"
+#   is Business.
+#
+# LOW_SIGNAL (0.4×): ambiguous words that legitimately appear across
+#   multiple categories. E.g. "trade" (Sports player trade / Business
+#   trade deal), "market" (finance / farmers market), "score" (Sports
+#   score / test score), "government" (Politics / World affairs).
+#
+# Unlisted keywords default to 1.0×.
+# ---------------------------------------------------------------------------
+KEYWORD_SIGNAL_TIERS: Dict[str, float] = {
+    # ── High-signal (3.0×) ────────────────────────────────────────────
+    # Technology
+    'semiconductor': 3.0, 'cybersecurity': 3.0, 'microsoft': 3.0,
+    'google': 3.0, 'apple': 3.0,
+    # AI & Startups
+    'artificial intelligence': 3.0, 'machine learning': 3.0,
+    'deep learning': 3.0, 'openai': 3.0, 'y combinator': 3.0,
+    'llm': 3.0, 'neural network': 3.0, 'chatbot': 3.0,
+    # Business & Finance
+    'nasdaq': 3.0, 'wall street': 3.0, 'federal reserve': 3.0,
+    'gdp': 3.0, 'inflation': 3.0, 'earnings': 3.0, 'revenue': 3.0,
+    'bitcoin': 3.0,
+    # Science
+    'nasa': 3.0, 'astronomy': 3.0, 'telescope': 3.0, 'quantum': 3.0,
+    'genetics': 3.0, 'archeology': 3.0,
+    # Health
+    'vaccine': 3.0, 'cancer': 3.0, 'fda': 3.0, 'pharma': 3.0,
+    'surgery': 3.0,
+    # Education
+    'tuition': 3.0, 'curriculum': 3.0, 'edtech': 3.0, 'professor': 3.0,
+    # Politics
+    'senate': 3.0, 'biden': 3.0, 'trump': 3.0, 'parliament': 3.0,
+    'congress': 3.0, 'white house': 3.0, 'legislation': 3.0,
+    # World
+    'nato': 3.0, 'ukraine': 3.0, 'russia': 3.0, 'israel': 3.0,
+    'humanitarian': 3.0, 'refugee': 3.0,
+    # Environment
+    'global warming': 3.0, 'emission': 3.0, 'glacier': 3.0,
+    'biodiversity': 3.0, 'ecology': 3.0,
+    # Sports
+    'nba': 3.0, 'nfl': 3.0, 'ipl': 3.0, 'fifa': 3.0, 'olympics': 3.0,
+    # Culture
+    'hollywood': 3.0, 'museum': 3.0, 'celebrity': 3.0,
+
+    # ── Low-signal / ambiguous (0.4×) ─────────────────────────────────
+    'trade': 0.4, 'market': 0.4, 'company': 0.4, 'bank': 0.4,
+    'tech': 0.4, 'internet': 0.4,
+    'ai ': 0.4, 'startup': 0.4,
+    'research': 0.4, 'scientists': 0.4, 'earth': 0.4, 'space': 0.4,
+    'doctor': 0.4, 'health': 0.4, 'fitness': 0.4, 'diet': 0.4,
+    'learning': 0.4, 'school': 0.4, 'student': 0.4,
+    'policy': 0.4, 'law': 0.4, 'vote': 0.4, 'government': 0.4,
+    'international': 0.4, 'global': 0.4, 'conflict': 0.4, 'border': 0.4,
+    'environment': 0.4, 'ocean': 0.4, 'plastic': 0.4,
+    'score': 0.4, 'tournament': 0.4,
+    'art': 0.4, 'travel': 0.4, 'culture': 0.4, 'film': 0.4,
+}
+
+# ---------------------------------------------------------------------------
+# Signal boost weights — structured signals are more reliable than keyword
+# frequency so they get proportionally higher weight.
+# ---------------------------------------------------------------------------
+URL_SIGNAL_BOOST = 40       # was 10 — URL path is a strong structural signal
+HINT_CATEGORY_BOOST = 75    # was 25 — RSS feed category is the most reliable signal
+
+
+def _keyword_weight(keyword: str) -> float:
+    """Return the effective weight for a single keyword occurrence.
+
+    Base weight: 1.5 for multi-word / long keywords, 1.0 for short ones.
+    Multiplied by the signal-tier factor (high / default / low).
+    """
+    base = 1.5 if len(keyword) > 5 else 1.0
+    tier_multiplier = KEYWORD_SIGNAL_TIERS.get(keyword.lower(), 1.0)
+    return base * tier_multiplier
+
+
+def classify_by_url(url: str) -> Optional[str]:
     """Signal 1: Source path signal"""
     url = url.lower()
     mapping = {
@@ -45,44 +136,53 @@ def classify_by_url(url: str) -> str:
             return cat
     return None
 
+
 def classify_by_keywords(text: str) -> Dict[str, float]:
-    """Signal 2: Weighted Keyword Scoring"""
+    """Signal 2: Weighted Keyword Scoring with occurrence cap and signal tiers.
+
+    For each keyword in each category:
+      1. Count occurrences via regex word-boundary match.
+      2. Cap the count at MAX_KEYWORD_OCCURRENCES so no single word can
+         dominate a category score by sheer repetition.
+      3. Multiply by the keyword's effective weight (base × signal-tier).
+    """
     text = text.lower()
-    scores = {cat: 0 for cat in CATEGORY_KEYWORDS.keys()}
-    
+    scores: Dict[str, float] = {cat: 0.0 for cat in CATEGORY_KEYWORDS}
+
     for cat, keywords in CATEGORY_KEYWORDS.items():
         for kw in keywords:
-            # Use regex to find whole words/phrases
-            matches = len(re.findall(f'\\b{re.escape(kw)}\\b', text))
-            scores[cat] += matches * 1.5 if len(kw) > 5 else matches
-            
+            raw_matches = len(re.findall(f'\\b{re.escape(kw)}\\b', text))
+            capped = min(raw_matches, MAX_KEYWORD_OCCURRENCES)
+            scores[cat] += capped * _keyword_weight(kw)
+
     return scores
+
 
 def smart_categorize(title: str, content: str, url: str, hint_category: str = None) -> str:
     """
     Multi-Signal Classifier
-    1. Hint Category from Feed (Highest weight)
-    2. URL Path Signal (High weight)
-    3. Keyword Density (Medium weight)
+    1. Hint Category from Feed (Highest weight — trusted RSS feed label)
+    2. URL Path Signal       (High weight — structural path in URL)
+    3. Keyword Density       (Medium weight — capped & tier-weighted)
     """
-    full_text = f"{title} {title} {content}" 
-    
-    # 1. Keyword scores base
+    full_text = f"{title} {title} {content}"
+
+    # 1. Keyword scores base (capped + tier-weighted)
     kw_scores = classify_by_keywords(full_text)
-    
+
     # 2. URL signal boost
     url_cat = classify_by_url(url)
     if url_cat:
-        kw_scores[url_cat] += 10
-        
-    # 3. Hint category boost (Massive weight since it comes from a trusted feed)
+        kw_scores[url_cat] += URL_SIGNAL_BOOST
+
+    # 3. Hint category boost (strongest prior — comes from the feed config)
     if hint_category and hint_category in kw_scores:
-        kw_scores[hint_category] += 25
-        
+        kw_scores[hint_category] += HINT_CATEGORY_BOOST
+
     # Get the best category
     best_cat = max(kw_scores, key=kw_scores.get)
-    
+
     if kw_scores[best_cat] < 2:
         return "General"
-        
+
     return best_cat

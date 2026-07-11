@@ -46,12 +46,22 @@ export function BookmarkProvider({ children }: { children: React.ReactNode }) {
     async function fetchBookmarks() {
         setIsLoading(true);
         try {
-            const data = await apiRequest<Article[]>('/api/v1/bookmarks');
+            const data = await apiRequest<Article[]>('/api/v1/bookmarks', { requireAuth: true });
             setBookmarks(data);
             // Also update local storage for offline access
             localStorage.setItem('smartnews_bookmarks', JSON.stringify(data));
         } catch (error) {
-            console.error('Failed to fetch bookmarks from server:', error);
+            const isAuthError = error instanceof Error && (
+                error.message.includes('authenticated') ||
+                error.message.includes('Authentication') ||
+                error.message.includes('401') ||
+                error.message.includes('403')
+            );
+            if (isAuthError) {
+                console.warn('Bookmarks fetch skipped: User is not authenticated.');
+            } else {
+                console.error('Failed to fetch bookmarks from server:', error);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -68,11 +78,22 @@ export function BookmarkProvider({ children }: { children: React.ReactNode }) {
 
         if (isAuthenticated) {
             try {
-                await apiRequest(`/api/v1/bookmarks/${article.id}`, { method: 'POST' });
+                await apiRequest(`/api/v1/bookmarks/${article.id}`, { method: 'POST', requireAuth: true });
             } catch (error) {
-                console.error('Failed to save bookmark to server:', error);
-                // Revert on failure? 
-                // setBookmarks(prevBookmarks);
+                const isAuthError = error instanceof Error && (
+                    error.message.includes('authenticated') ||
+                    error.message.includes('Authentication') ||
+                    error.message.includes('401') ||
+                    error.message.includes('403')
+                );
+                if (isAuthError) {
+                    console.warn('Bookmark add skipped: User is not authenticated.');
+                } else {
+                    console.error('Failed to save bookmark to server, rolling back:', error);
+                    // Roll back optimistic updates on sync failure
+                    setBookmarks(prevBookmarks);
+                    localStorage.setItem('smartnews_bookmarks', JSON.stringify(prevBookmarks));
+                }
             }
         }
     };
@@ -86,9 +107,22 @@ export function BookmarkProvider({ children }: { children: React.ReactNode }) {
 
         if (isAuthenticated) {
             try {
-                await apiRequest(`/api/v1/bookmarks/${articleId}`, { method: 'DELETE' });
+                await apiRequest(`/api/v1/bookmarks/${articleId}`, { method: 'DELETE', requireAuth: true });
             } catch (error) {
-                console.error('Failed to remove bookmark from server:', error);
+                const isAuthError = error instanceof Error && (
+                    error.message.includes('authenticated') ||
+                    error.message.includes('Authentication') ||
+                    error.message.includes('401') ||
+                    error.message.includes('403')
+                );
+                if (isAuthError) {
+                    console.warn('Bookmark remove skipped: User is not authenticated.');
+                } else {
+                    console.error('Failed to remove bookmark from server, rolling back:', error);
+                    // Roll back optimistic updates on sync failure
+                    setBookmarks(prevBookmarks);
+                    localStorage.setItem('smartnews_bookmarks', JSON.stringify(prevBookmarks));
+                }
             }
         }
     };

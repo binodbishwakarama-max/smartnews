@@ -23,3 +23,5 @@ pytest
 httpx
 pytest-asyncio
 aiohttp
+textstat
+ftfy

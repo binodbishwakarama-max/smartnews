@@ -27,6 +27,7 @@ class Article(Base):
     sentiment_score = Column(Float, default=0.0)
     bias_label = Column(String, nullable=True)
     embedding = Column(JSON, nullable=True) 
+    cluster_id = Column(Integer, nullable=True, index=True) 
 
     # Quality & Ranking Fields
     quality_score = Column(Float, default=0.0, index=True)
@@ -34,6 +35,11 @@ class Article(Base):
     feed_score = Column(Float, default=0.0, index=True)
     is_featured = Column(Boolean, default=False)
     is_clickbait = Column(Boolean, default=False)
+    
+    length_score = Column(Float, default=0.0)
+    readability_sub_score = Column(Float, default=0.0)
+    clickbait_penalty = Column(Float, default=0.0)
+    caps_penalty = Column(Float, default=0.0)
     
     # Metrics
     read_time_minutes = Column(Integer, default=1)

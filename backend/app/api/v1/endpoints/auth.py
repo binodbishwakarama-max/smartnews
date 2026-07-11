@@ -2,7 +2,7 @@ from datetime import timedelta
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -10,14 +10,19 @@ import auth
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.article import User
+from app.api.v1.schemas import UserSignup
+from app.core.limiter import limiter
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
 @router.post("/login/access-token", response_model=dict)
+@limiter.limit("5/minute")
 def login_access_token(
-    db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
+    request: Request,
+    db: Session = Depends(get_db),
+    form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
     """
     OAuth2 compatible token login, get an access token for future requests.
@@ -42,12 +47,18 @@ def login_access_token(
 
 
 @router.post("/signup", response_model=dict)
+@limiter.limit("5/minute")
 def signup(
-    username: str, password: str, db: Session = Depends(get_db)
+    request: Request,
+    user_in: UserSignup,
+    db: Session = Depends(get_db)
 ) -> Any:
     """
     Create new user.
     """
+    username = user_in.username
+    password = user_in.password
+
     user = db.query(User).filter(User.username == username).first()
     if user:
         logger.info("Signup rejected because username already exists: %s", username)

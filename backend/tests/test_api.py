@@ -73,7 +73,7 @@ def test_signup_creates_user(client: TestClient):
     """Signup creates a new user and returns success."""
     response = client.post(
         "/api/v1/auth/signup",
-        params={"username": "testuser_api", "password": "testpass123"},
+        json={"username": "testuser_api", "password": "testpass123"},
     )
     # 200 created or 400 if user already exists from previous run
     assert response.status_code in (200, 400)

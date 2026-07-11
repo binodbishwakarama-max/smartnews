@@ -1,5 +1,5 @@
 from typing import Dict
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, Request
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.db.session import SessionLocal
@@ -8,6 +8,7 @@ from app.scraper.scraper import scrape_all
 import logging
 from datetime import datetime
 from auth import require_admin_access
+from app.core.limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,9 @@ router = APIRouter(
 )
 
 @router.post("/scrape", response_model=Dict)
+@limiter.limit("5/minute")
 async def trigger_scraping(
+    request: Request,
     background_tasks: BackgroundTasks,
     max_articles: int = Query(50, ge=1, le=200, description="Maximum number of articles to scrape"),
 ):
@@ -92,7 +95,9 @@ def get_scraping_status(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Failed to get scraping status")
 
 @router.delete("/cleanup", response_model=Dict)
+@limiter.limit("5/minute")
 def cleanup_old_articles(
+    request: Request,
     days_old: int = Query(30, ge=1, le=365, description="Number of days of history to keep"),
     db: Session = Depends(get_db)
 ):
@@ -170,7 +175,39 @@ async def run_scraping_task(max_articles: int):
 
         logger.info(f"Background scraping completed. Saved {saved_count} new articles out of {len(articles)} scraped")
 
+        # Run clustering
+        try:
+            from app.services.clustering import cluster_recent_articles
+            cluster_recent_articles(db)
+        except Exception as cluster_err:
+            logger.error(f"Error executing clustering in task: {cluster_err}")
+
     except Exception as e:
         logger.error(f"Error in background scraping task: {e}")
     finally:
         db.close()
+
+@router.get("/recent-scores", response_model=list)
+def get_recent_scores(limit: int = Query(20, ge=1, le=100), db: Session = Depends(get_db)):
+    """
+    Get recent articles with their quality score compositions.
+    """
+    try:
+        articles = db.query(Article).order_by(Article.created_at.desc()).limit(limit).all()
+        return [
+            {
+                "id": a.id,
+                "title": a.title,
+                "source": a.source,
+                "quality_score": a.quality_score,
+                "length_score": a.length_score,
+                "readability_sub_score": a.readability_sub_score,
+                "clickbait_penalty": a.clickbait_penalty,
+                "caps_penalty": a.caps_penalty,
+                "created_at": a.created_at
+            }
+            for a in articles
+        ]
+    except Exception as e:
+        logger.error(f"Error getting recent scores: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get recent scores")

@@ -7,9 +7,10 @@ import { UserButton, SignedIn, SignedOut, SignInButton, SignUpButton } from '@cl
 import SearchBar from './SearchBar';
 import ThemeToggle from './ThemeToggle';
 import Sidebar from './Sidebar';
+import StreakBadge from './StreakBadge';
 
 const CATEGORIES = [
-    'Latest', 'World', 'Business', 'Technology', 'Science', 'Health', 'Politics', 'Culture', 'Sports'
+    'For You', 'Latest', 'World', 'Business', 'Technology', 'Science', 'Health', 'Politics', 'Culture', 'Sports'
 ];
 
 const subscribe = () => () => {};
@@ -19,7 +20,17 @@ export default function Header() {
     const searchParams = useSearchParams();
     const currentCategory = searchParams.get('category') || 'Latest';
     const [stats, setStats] = useState<{ total_articles: number; new_today: number; status: string } | null>(null);
+    const [currentDate, setCurrentDate] = useState<string>('');
     const mounted = useSyncExternalStore(subscribe, () => true, () => false);
+
+    useEffect(() => {
+        setCurrentDate(new Date().toLocaleDateString('en-US', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        }).toUpperCase());
+    }, []);
 
     useEffect(() => {
         async function fetchStats() {
@@ -47,7 +58,7 @@ export default function Header() {
             <div className="hidden md:flex max-w-7xl mx-auto px-6 py-2 justify-between items-center text-[10px] uppercase font-bold tracking-widest border-b border-border">
                 <div className="flex gap-4 items-center">
                     <span className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-accent animate-pulse" /> Live Updates</span>
-                    <span className="text-secondary">US Edition</span>
+                    {currentDate && <span className="text-secondary font-mono">{currentDate}</span>}
                     {stats && (
                         <div className="flex items-center gap-4 pl-4 border-l border-border text-secondary normal-case font-medium">
                             <span className="flex items-center gap-1.5 uppercase font-bold text-[9px]">
@@ -60,6 +71,7 @@ export default function Header() {
                     )}
                 </div>
                 <div className="flex gap-4 items-center">
+                    <StreakBadge />
                     <button className="hover:underline text-secondary hover:text-primary">Subscribe</button>
 
                     {mounted ? (
@@ -98,38 +110,41 @@ export default function Header() {
             </div>
 
             {/* Main Branding */}
-            <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col items-center gap-6">
+            <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col items-center gap-4">
                 <Link href="/">
-                    <h1 className="text-5xl md:text-7xl font-serif font-black tracking-tighter text-center">
+                    <h1 className="text-5xl md:text-7xl font-serif font-black tracking-tighter text-center uppercase">
                         The Smart News<span className="text-accent">.</span>
                     </h1>
                 </Link>
-                <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-secondary text-center max-w-md">
-                    Independent Journalism • Worldwide Coverage • Real-Time AI Curation
+                <p className="text-[10px] font-mono font-black uppercase tracking-[0.35em] text-secondary text-center max-w-2xl">
+                    Independent Journalism • Worldwide Coverage • Editorial Precision
                 </p>
             </div>
 
             {/* Navigation */}
-            <nav className="border-t border-border py-3">
+            <nav className="border-t-4 border-b-4 border-double border-brand dark:border-border py-2.5 bg-background">
                 <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
                     <button
                         onClick={() => setIsSidebarOpen(true)}
-                        className="p-3 -ml-2 md:p-2 md:-ml-2 hover:bg-black hover:text-white transition-all transform hover:scale-110 active:scale-95 rounded-full md:rounded-none"
+                        className="p-2 -ml-2 hover:bg-brand hover:text-background dark:hover:bg-primary dark:hover:text-background transition-all transform active:scale-95 border border-transparent hover:border-brand rounded-none"
                         aria-label="Open Menu"
                     >
                         <Menu className="w-5 h-5" />
                     </button>
                     <div className="flex gap-8 overflow-x-auto no-scrollbar">
-                        {CATEGORIES.map(cat => {
-                            const isActive = currentCategory === cat;
+                    {CATEGORIES.map(cat => {
+                            const isActive = currentCategory === cat || (cat === 'Latest' && currentCategory === 'Latest');
+                            const isForYou = cat === 'For You';
                             return (
                                 <Link
                                     key={cat}
-                                    href={cat === 'Latest' ? '/' : `/?category=${cat}`}
-                                    className={`text-[12px] font-black uppercase tracking-widest transition-all relative py-1
+                                    href={cat === 'Latest' ? '/' : `/?category=${encodeURIComponent(cat)}`}
+                                    className={`text-[11px] font-mono font-black uppercase tracking-widest transition-all relative py-1 whitespace-nowrap
                                         ${isActive ? 'text-accent border-b-2 border-accent' : 'hover:text-accent'}
+                                        ${isForYou ? 'flex items-center gap-1' : ''}
                                     `}
                                 >
+                                    {isForYou && <span className="text-[8px]">✦</span>}
                                     {cat}
                                 </Link>
                             );

@@ -34,6 +34,11 @@ def get_articles(
     
     query = db.query(Article)
     
+    # Exclude non-lead duplicate cluster articles in main feed requests
+    # Bypassed if doing specific text search or source filter to keep those searches transparent
+    if not (search and search.strip()) and not source:
+        query = query.filter(or_(Article.cluster_id == None, Article.cluster_id == Article.id))
+    
     # Category filter
     if category and category.lower() != "all":
         query = query.filter(Article.category.ilike(f"%{category}%"))
@@ -63,8 +68,64 @@ def get_articles(
         Article.publish_date.desc()
     ).offset(offset).limit(limit).all()
     
+    # Serialize articles with duplicate coverage metadata
+    serializable_articles = []
+    for a in articles:
+        other_sources = []
+        if a.cluster_id:
+            duplicates = db.query(Article).filter(
+                Article.cluster_id == a.cluster_id,
+                Article.id != a.id
+            ).all()
+            
+            seen_sources = {}
+            for dup in duplicates:
+                src_name = (dup.source or "").strip().lower()
+                if src_name:
+                    if src_name not in seen_sources or (dup.quality_score or 0) > (seen_sources[src_name].quality_score or 0):
+                        seen_sources[src_name] = dup
+            
+            other_sources = [
+                {
+                    "id": dup.id,
+                    "source": dup.source,
+                    "url": dup.url,
+                    "title": dup.title,
+                    "quality_score": dup.quality_score
+                }
+                for dup in seen_sources.values()
+            ]
+        
+        art_dict = {
+            "id": a.id,
+            "title": a.title,
+            "slug": a.slug,
+            "content": a.content,
+            "summary": a.summary,
+            "source": a.source,
+            "url": a.url,
+            "image_url": a.image_url,
+            "author": a.author,
+            "publish_date": a.publish_date,
+            "category": a.category,
+            "region": a.region,
+            "tags": a.tags,
+            "sentiment_score": a.sentiment_score,
+            "bias_label": a.bias_label,
+            "quality_score": a.quality_score,
+            "feed_score": a.feed_score,
+            "is_featured": a.is_featured,
+            "is_clickbait": a.is_clickbait,
+            "read_time_minutes": a.read_time_minutes,
+            "view_count": a.view_count,
+            "created_at": a.created_at,
+            "updated_at": a.updated_at,
+            "other_sources": other_sources
+        }
+        serializable_articles.append(art_dict)
+    
     return {
-        "articles": articles,
+        "articles": serializable_articles,
         "total": total_count,
         "limit": limit,
         "offset": offset,
@@ -119,3 +180,108 @@ def search_articles(
         "limit": limit,
         "offset": offset
     }
+
+@router.get("/stream")
+async def stream_articles(request: Request):
+    """
+    Server-Sent Events (SSE) stream for real-time article ingest broadcasts.
+    Clients receive new articles instantly as they are crawled and indexed.
+    """
+    from fastapi.responses import StreamingResponse
+    import json
+    import asyncio
+    from app.core.pubsub import pubsub
+
+    async def event_generator():
+        # Get subscriber queue
+        queue = pubsub.subscribe()
+        try:
+            while True:
+                # Disconnect if client leaves
+                if await request.is_disconnected():
+                    break
+                    
+                try:
+                    # Non-blocking wait for next article message (timeout allows client heartbeat checks)
+                    article_data = await asyncio.wait_for(queue.get(), timeout=25.0)
+                    yield f"data: {json.dumps(article_data)}\n\n"
+                except asyncio.TimeoutError:
+                    # Send a keep-alive heartbeat comment to prevent browser timeout disconnects
+                    yield ": heartbeat\n\n"
+                    
+        except asyncio.CancelledError:
+            pass
+        finally:
+            pubsub.unsubscribe(queue)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@router.get("/tts")
+@limiter.limit("30/minute")
+async def stream_tts(text: str, request: Request):
+    """
+    Proxy text-to-speech requests to Google Translate TTS to bypass browser referrer/CORS blocks.
+    """
+    import urllib.parse
+    import httpx
+    import io
+    from fastapi.responses import StreamingResponse
+    from fastapi import HTTPException
+
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="Text parameter is required")
+
+    # Limit text to 200 chars to satisfy Google TTS requirements
+    clean_text = text.strip()
+    if len(clean_text) > 200:
+        clean_text = clean_text[:197] + "..."
+
+    # Google TTS URL
+    encoded_text = urllib.parse.quote(clean_text)
+    url = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q={encoded_text}"
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers, timeout=10.0)
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail="Failed to fetch TTS from upstream service")
+                
+            return StreamingResponse(
+                io.BytesIO(response.content),
+                media_type="audio/mpeg"
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"TTS Proxy Error: {str(e)}")
+
+@router.get("/{article_id}")
+def get_article_by_id(article_id: int, db: Session = Depends(get_db)):
+    """
+    Fetch a single article by its ID.
+    """
+    from fastapi import HTTPException
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return article
+
+@router.post("/{article_id}/view")
+def increment_view_count(article_id: int, db: Session = Depends(get_db)):
+    """
+    Increment the view_count for an article.
+    Called by the frontend when a reader opens an article in ReaderModal.
+    Returns the updated view count.
+    """
+    from sqlalchemy import update
+    db.execute(
+        update(Article)
+        .where(Article.id == article_id)
+        .values(view_count=Article.view_count + 1)
+    )
+    db.commit()
+    article = db.query(Article.view_count).filter(Article.id == article_id).first()
+    return {"view_count": article.view_count if article else 1}

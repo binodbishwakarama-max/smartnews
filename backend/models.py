@@ -17,6 +17,10 @@ class Article(Base):
     category = Column(String, nullable=True)
     is_clickbait = Column(Boolean, default=False)
     quality_score = Column(Float, default=0.0)
+    length_score = Column(Float, default=0.0)
+    readability_sub_score = Column(Float, default=0.0)
+    clickbait_penalty = Column(Float, default=0.0)
+    caps_penalty = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 

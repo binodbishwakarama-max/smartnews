@@ -257,9 +257,10 @@ def require_admin_access(
     if current_user and is_admin_user(current_user):
         return current_user
 
+    import secrets
     expected_api_key = os.getenv("API_KEY")
     provided_api_key = request.headers.get("X-API-Key")
-    if expected_api_key and provided_api_key == expected_api_key:
+    if expected_api_key and provided_api_key and secrets.compare_digest(provided_api_key, expected_api_key):
         return current_user
 
     raise HTTPException(

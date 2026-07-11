@@ -25,7 +25,9 @@ backend/news.db
 
 # SQLite DBs
 *.db
+*.db-*
 backend/*.db
+backend/*.db-*
 
 # Agent files
 .agents/

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.article import Article, TrendingTopic
 from app.services.scraper_engine import get_scrapers
 from app.db.session import SessionLocal
+from app.utils.source import normalize_source_domain
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.services.quality import quality_engine
@@ -70,11 +71,15 @@ def process_and_save_article(scraper, link):
             image_url=valid_image,
             publish_date=data['publish_date'],
             author=data['author'],
-            source=scraper.base_url,
+            source=normalize_source_domain(scraper.base_url),
             category=category,
             summary=data['content'][:200] + "...", 
             quality_score=q_metrics['score'],
             readability_score=q_metrics['readability'],
+            length_score=q_metrics.get('length_score', 0.0),
+            readability_sub_score=q_metrics.get('readability_sub_score', 0.0),
+            clickbait_penalty=q_metrics.get('clickbait_penalty', 0.0),
+            caps_penalty=q_metrics.get('caps_penalty', 0.0),
             feed_score=q_metrics['score']
         )
         db.add(article)

@@ -6,6 +6,7 @@ import time
 import logging
 import random
 from typing import List, Dict, Optional
+from app.utils.source import normalize_source_domain
 
 logger = logging.getLogger(__name__)
 
@@ -222,8 +223,8 @@ def scrape_all(max_articles: int = 100) -> List[Dict]:
         try:
             art = fetch_article(url)
             if art:
-                # Extract source from URL
-                art['source'] = url.split('/')[2] if '//' in url else 'unknown'
+                # Extract and normalize source from URL
+                art['source'] = normalize_source_domain(url)
                 articles.append(art)
 
             # Rate limiting - be respectful to news sites
