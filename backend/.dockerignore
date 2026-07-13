@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.db
+*.db-*
+.env
+.pytest_cache/
+logs/
+*.txt
+!requirements.txt
+*.bak
+celerybeat-schedule
+news_backup.db
