@@ -70,5 +70,5 @@ If you haven't already pushed your committed changes to GitHub:
 ---
 
 ## 🎉 Live URLs
-* **Frontend**: `https://smartnews.vercel.app`
+* **Frontend**: `https://smartnewsap.vercel.app`
 * **API Documentation**: `https://smartnews-api.onrender.com/docs`

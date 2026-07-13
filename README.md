@@ -2,6 +2,10 @@
 
 A production-grade news aggregation system with ML-powered classification, duplicate detection, clickbait filtering, and personalized recommendations.
 
+## 🔗 Live Demo
+- **Frontend App**: [smartnewsap.vercel.app](https://smartnewsap.vercel.app)
+- **API Documentation**: [smartnews-api.onrender.com/docs](https://smartnews-api.onrender.com/docs)
+
 ## ✅ What's Implemented
 
 ### Backend (Python + FastAPI)
