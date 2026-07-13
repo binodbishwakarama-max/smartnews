@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 from app.api.v1.routers import api_router
 from app.core.config import settings
 from app.core.security import SecurityHeadersMiddleware, RequestLoggingMiddleware
@@ -86,6 +87,7 @@ default_origins = [
     "http://127.0.0.1:8000",
     # Production Vercel deployments
     "https://smartnews.vercel.app",
+    "https://smartnewsap.vercel.app",
     "https://smartnews-binodbishwakarama-maxs-projects.vercel.app",
 ]
 # Also match all Vercel preview deployments (*.vercel.app)
@@ -105,24 +107,44 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Request timeout and error handling middleware
-@app.middleware("http")
-async def add_process_time_and_error_handling(request: Request, call_next):
-    start_time = time.time()
-    try:
-        response = await call_next(request)
-        process_time = time.time() - start_time
-        response.headers["X-Process-Time"] = str(process_time)
-        return response
-    except Exception as e:
-        logger.error(f"Global Request Crash: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "detail": "Internal Server Error",
-                "message": str(e) if settings.DEBUG else "An unexpected error occurred. Our team has been notified."
-            }
-        )
+class ErrorHandlingMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        import time
+        from starlette.datastructures import MutableHeaders
+        from starlette.responses import JSONResponse
+
+        start_time = time.time()
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                process_time = time.time() - start_time
+                headers = MutableHeaders(scope=message)
+                headers["X-Process-Time"] = str(process_time)
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_wrapper)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Global Request Crash: {str(e)}", exc_info=True)
+            response = JSONResponse(
+                status_code=500,
+                content={
+                    "detail": "Internal Server Error",
+                    "message": str(e) if settings.DEBUG else "An unexpected error occurred. Our team has been notified."
+                }
+            )
+            await response(scope, receive, send)
+
+app.add_middleware(ErrorHandlingMiddleware)
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 app.include_router(news.router, prefix="/news", tags=["news"])
