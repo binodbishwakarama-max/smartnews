@@ -76,9 +76,17 @@ default_origins = [
     "http://localhost:3007",
     "http://127.0.0.1:3007",
     "http://localhost:8000",
-    "http://127.0.0.1:8000"
+    "http://127.0.0.1:8000",
+    # Production Vercel deployments
+    "https://smartnews.vercel.app",
+    "https://smartnews-binodbishwakarama-maxs-projects.vercel.app",
 ]
-origins = os.getenv("BACKEND_CORS_ORIGINS", ",".join(default_origins)).split(",")
+# Also match all Vercel preview deployments (*.vercel.app)
+raw_origins = os.getenv("BACKEND_CORS_ORIGINS", "").strip()
+if raw_origins:
+    origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+else:
+    origins = default_origins
 
 
 app.add_middleware(

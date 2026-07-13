@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     # Database
     # Fallback to SQLite if no Docker/Postgres available
     DATABASE_URL: str = "sqlite:///./news.db"
-    DB_POOL_SIZE: int = 20
-    DB_MAX_OVERFLOW: int = 30
+    DB_POOL_SIZE: int = 3
+    DB_MAX_OVERFLOW: int = 5
     DB_POOL_RECYCLE: int = 1800
     DB_POOL_TIMEOUT: int = 30
     
