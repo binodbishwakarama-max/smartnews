@@ -29,13 +29,67 @@ const RAIL_INSERT_POSITION = 6; // Insert rail after 6th grid item
 // How many new articles queue up before auto-inserting (0 = instant auto-insert)
 const AUTO_INSERT_THRESHOLD = 3;
 
+const STATIC_FALLBACK_ARTICLES: Article[] = [
+    {
+        id: -1,
+        title: "Global Tech Summit: Next-Generation Artificial Intelligence Takes Center Stage",
+        content: "The annual Global Tech Summit kicked off with industry leaders showcasing breakthroughs in autonomous agents, large multimodal models, and hardware acceleration. Keynotes highlighted the transition from simple generative chatbots to agentic workflows that act autonomously on behalf of users.",
+        summary: "Industry leaders showcase breakthrough AI agentic workflows and next-gen hardware accelerators at Global Tech Summit.",
+        url: "https://example.com/tech-summit",
+        image_url: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=1000&auto=format&fit=crop",
+        category: "Technology",
+        source: "Tech Journal",
+        publish_date: new Date().toISOString(),
+        quality_score: 9.2
+    },
+    {
+        id: -2,
+        title: "Global Energy Markets Pivot Toward Next-Gen Solar Grid Infrastructures",
+        content: "Investment in solar energy transmission infrastructure has hit record highs this quarter. Researchers have successfully deployed high-efficiency perovskite-silicon tandem solar panels on a commercial scale, promising to boost yield by up to thirty percent across major national grid nodes.",
+        summary: "Commercial deployment of tandem perovskite-silicon solar cells drives record-high investments in grid infrastructure.",
+        url: "https://example.com/solar-infrastructure",
+        image_url: "https://images.unsplash.com/photo-1509391366360-2e959784a276?q=80&w=1000&auto=format&fit=crop",
+        category: "Science",
+        source: "Science Wire",
+        publish_date: new Date().toISOString(),
+        quality_score: 8.9
+    },
+    {
+        id: -3,
+        title: "Global Markets Stabilize as Inflation Returns to Target Ranges",
+        content: "Leading central banks report inflation rates have stabilized within target bands, prompting speculation of synchronized interest rate cuts. Global stock indexes surged in early trading following the announcements, led by technology and infrastructure sectors.",
+        summary: "Central banks report inflation stabilization within target bands, triggering stock market gains.",
+        url: "https://example.com/market-stabilization",
+        image_url: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=1000&auto=format&fit=crop",
+        category: "Business",
+        source: "Financial Post",
+        publish_date: new Date().toISOString(),
+        quality_score: 8.5
+    },
+    {
+        id: -4,
+        title: "Deep Space Telescope Uncovers Planetary System with Multiple Ocean Worlds",
+        content: "Astronomers utilizing the latest deep space telescope array have identified a neighboring stellar system hosting three terrestrial planets orbiting inside the star's habitable zone. Spectroscopic analysis suggests all three planets possess active water vapour atmospheres and potential global oceans.",
+        summary: "Deep space telescope discovers a stellar system with three terrestrial ocean planets in the habitable zone.",
+        url: "https://example.com/ocean-worlds-discovered",
+        image_url: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1000&auto=format&fit=crop",
+        category: "Science",
+        source: "Cosmos Daily",
+        publish_date: new Date().toISOString(),
+        quality_score: 9.5
+    }
+];
+
 export default function ArticleFeed({ initialArticles, category, showHero = false }: ArticleFeedProps) {
-    const [articles, setArticles] = useState<Article[]>(initialArticles);
+    const [isUsingFallback, setIsUsingFallback] = useState(initialArticles.length === 0);
+    const [articles, setArticles] = useState<Article[]>(
+        initialArticles.length > 0 ? initialArticles : STATIC_FALLBACK_ARTICLES
+    );
     const [incomingArticles, setIncomingArticles] = useState<Article[]>([]);
     const [justInsertedIds, setJustInsertedIds] = useState<Set<number>>(new Set());
     const [isLoading, setIsLoading] = useState(false);
     const [hasMore, setHasMore] = useState(true);
-    const [totalCount, setTotalCount] = useState(initialArticles.length * 2);
+    const [totalCount, setTotalCount] = useState(initialArticles.length > 0 ? initialArticles.length * 2 : 10);
     const [offset, setOffset] = useState(ARTICLES_PER_PAGE);
     const [liveConnected, setLiveConnected] = useState(false);
     const [liveCount, setLiveCount] = useState(0); // total articles received via SSE this session
@@ -59,7 +113,9 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
 
     // Reset state when category changes
     useEffect(() => {
-        setArticles(initialArticles);
+        const hasArticles = initialArticles.length > 0;
+        setIsUsingFallback(!hasArticles);
+        setArticles(hasArticles ? initialArticles : STATIC_FALLBACK_ARTICLES);
         setIncomingArticles([]);
         setJustInsertedIds(new Set());
         setHasMore(true);
@@ -177,6 +233,12 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
 
+    const [triggerReload, setTriggerReload] = useState(0);
+    const isUsingFallbackRef = useRef(isUsingFallback);
+    useEffect(() => {
+        isUsingFallbackRef.current = isUsingFallback;
+    }, [isUsingFallback]);
+
     // Real-time EventSource listener
     useEffect(() => {
         const streamUrl = `${API_BASE_URL}/api/v1/articles/stream`;
@@ -192,6 +254,9 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
                 if (!mounted) return;
                 setLiveConnected(true);
                 reconnectDelay = 1000; // reset backoff on successful connection
+                if (isUsingFallbackRef.current) {
+                    setTriggerReload(prev => prev + 1);
+                }
             };
 
             eventSource.onmessage = (event) => {
@@ -270,6 +335,22 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
 
         setIsLoading(true);
         try {
+            if (isUsingFallback) {
+                const url = `${API_ENDPOINTS.ARTICLES}?limit=${ARTICLES_PER_PAGE}&offset=0${category ? `&category=${encodeURIComponent(category)}` : ''}`;
+                const data = await safeApiRequest<ArticlesResponse | Article[]>(url, { skipRetry: true });
+                if (data) {
+                    const newArticles = Array.isArray(data) ? data : data.articles || [];
+                    if (newArticles.length > 0) {
+                        setArticles(newArticles);
+                        setIsUsingFallback(false);
+                        setOffset(ARTICLES_PER_PAGE);
+                        const nextTotal = Array.isArray(data) ? ARTICLES_PER_PAGE : data.total ?? ARTICLES_PER_PAGE;
+                        setTotalCount(nextTotal);
+                    }
+                }
+                return;
+            }
+
             let currentOffset = offset;
             if (totalCount > 0 && currentOffset >= totalCount) {
                 currentOffset = 0;
@@ -290,12 +371,12 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
             }
 
             if (newArticles.length > 0) {
-                setArticles(prev => [...prev, ...newArticles]);
+                setArticles(prev => [...prev.filter(a => a.id >= 0), ...newArticles]);
                 const nextTotal = Array.isArray(data) ? totalCount : data.total ?? totalCount;
                 setTotalCount(nextTotal);
                 setOffset(currentOffset + ARTICLES_PER_PAGE);
             } else {
-                if (articles.length === 0) {
+                if (articles.filter(a => a.id >= 0).length === 0) {
                     setHasMore(false);
                 }
             }
@@ -305,6 +386,12 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (triggerReload > 0 && isUsingFallback) {
+            void loadMore();
+        }
+    }, [triggerReload]);
 
     const observerTarget = useRef(null);
 
@@ -341,12 +428,17 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
             <div className="flex items-center gap-3 mb-8 pb-4 border-b border-border">
                 <span className="flex items-center gap-1.5">
                     <span
-                        className={`w-2 h-2 rounded-full ${liveConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400'}`}
+                        className={`w-2 h-2 rounded-full ${liveConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400 animate-pulse'}`}
                     />
                     <span className={`text-[10px] font-mono font-black uppercase tracking-widest ${liveConnected ? 'text-green-600 dark:text-green-400' : 'text-red-400'}`}>
-                        {liveConnected ? 'Live' : 'Reconnecting...'}
+                        {liveConnected ? 'Live' : 'Backend Wake-up Sequence (Showing Cached Stories)...'}
                     </span>
                 </span>
+                {isUsingFallback && (
+                    <span className="text-[9px] font-mono text-red-500 font-bold uppercase tracking-widest animate-pulse border border-red-500/25 px-1.5 py-0.5 bg-red-500/5">
+                        Offline Preview Mode
+                    </span>
+                )}
                 {liveCount > 0 && (
                     <span className="text-[9px] font-mono text-secondary uppercase tracking-widest">
                         +{liveCount} ingested this session
