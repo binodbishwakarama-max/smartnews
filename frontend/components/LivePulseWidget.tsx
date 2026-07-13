@@ -71,6 +71,7 @@ function computeSentiment(title: string): number {
 export default function LivePulseWidget() {
     const [events, setEvents] = useState<LiveEvent[]>([]);
     const [soundEnabled, setSoundEnabled] = useState(false);
+    const [liveConnected, setLiveConnected] = useState(false);
     const { openReader } = useReader();
     const initialized = useRef(false);
     const soundEnabledRef = useRef(soundEnabled);
@@ -110,10 +111,21 @@ export default function LivePulseWidget() {
     useEffect(() => {
         const streamUrl = `${API_BASE_URL}/api/v1/articles/stream`;
         let es: EventSource;
+        let reconnectDelay = 1000;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+        let mounted = true;
 
         function connect() {
             es = new EventSource(streamUrl);
+
+            es.onopen = () => {
+                if (!mounted) return;
+                setLiveConnected(true);
+                reconnectDelay = 1000;
+            };
+
             es.onmessage = (event) => {
+                if (!mounted) return;
                 try {
                     const article = JSON.parse(event.data);
                     const newEv: LiveEvent = {
@@ -136,9 +148,26 @@ export default function LivePulseWidget() {
                     }
                 } catch {}
             };
+
+            es.onerror = () => {
+                if (!mounted) return;
+                setLiveConnected(false);
+                es.close();
+                reconnectTimer = setTimeout(() => {
+                    if (mounted) {
+                        reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+                        connect();
+                    }
+                }, reconnectDelay);
+            };
         }
         connect();
-        return () => es?.close();
+        return () => {
+            mounted = false;
+            setLiveConnected(false);
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            es?.close();
+        };
     }, []);
 
     // Sentiment breakdown metrics
@@ -156,8 +185,9 @@ export default function LivePulseWidget() {
             {/* Header / Title */}
             <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
                 <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-accent animate-pulse" />
+                    <Activity className={`w-4 h-4 ${liveConnected ? 'text-green-500 animate-pulse' : 'text-red-400'}`} />
                     <h4 className="font-serif text-sm font-black tracking-wider uppercase">Live Newsroom Pulse</h4>
+                    <span className={`w-1.5 h-1.5 rounded-full ${liveConnected ? 'bg-green-500 animate-ping' : 'bg-red-400'}`} />
                 </div>
                 
                 {/* Audio chime toggle */}
@@ -183,8 +213,8 @@ export default function LivePulseWidget() {
             <div className="space-y-3 mb-5 max-h-56 overflow-y-auto no-scrollbar pr-1">
                 {events.length === 0 ? (
                     <div className="text-center py-6 text-secondary text-xs font-mono">
-                        <Radio className="w-6 h-6 mx-auto mb-2 animate-bounce opacity-45" />
-                        Awaiting connection...
+                        <Radio className={`w-6 h-6 mx-auto mb-2 opacity-45 ${liveConnected ? 'animate-bounce' : ''}`} />
+                        {liveConnected ? 'Awaiting connection...' : 'Reconnecting to live feed...'}
                     </div>
                 ) : (
                     events.map((e, idx) => {

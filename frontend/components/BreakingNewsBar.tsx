@@ -40,6 +40,8 @@ export default function BreakingNewsBar() {
     useEffect(() => {
         const streamUrl = `${API_BASE_URL}/api/v1/articles/stream`;
         let es: EventSource;
+        let reconnectDelay = 1000;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
         let mounted = true;
 
         function connect() {
@@ -57,9 +59,24 @@ export default function BreakingNewsBar() {
                     setVisible(true);
                 } catch {}
             };
+
+            es.onerror = () => {
+                if (!mounted) return;
+                es.close();
+                reconnectTimer = setTimeout(() => {
+                    if (mounted) {
+                        reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+                        connect();
+                    }
+                }, reconnectDelay);
+            };
         }
         connect();
-        return () => { mounted = false; es?.close(); };
+        return () => {
+            mounted = false;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            es?.close();
+        };
     }, []);
 
     // Auto-rotate ticker

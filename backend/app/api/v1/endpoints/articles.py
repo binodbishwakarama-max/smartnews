@@ -224,7 +224,17 @@ async def stream_articles(request: Request):
         finally:
             pubsub.unsubscribe(queue)
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    headers = {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+    }
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers=headers
+    )
 
 @router.get("/tts")
 @limiter.limit("30/minute")

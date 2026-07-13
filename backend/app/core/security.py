@@ -1,49 +1,69 @@
 from fastapi import Request, Response, HTTPException, Depends, status
-from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.security import APIKeyHeader
+from starlette.datastructures import MutableHeaders, Headers
+from starlette.types import ASGIApp, Receive, Scope, Send
 import time
 import os
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
+class SecurityHeadersMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
 
-        # Security headers
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
-        # Remove server header for security
-        if "server" in response.headers:
-            del response.headers["server"]
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers["X-Content-Type-Options"] = "nosniff"
+                headers["X-Frame-Options"] = "DENY"
+                headers["X-XSS-Protection"] = "1; mode=block"
+                headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+                headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+                headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+                if "server" in headers:
+                    del headers["server"]
+            await send(message)
 
-        return response
+        await self.app(scope, receive, send_wrapper)
 
-class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        start_time = time.time()
+class RequestLoggingMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
 
-        # Log request
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
         import logging
         logger = logging.getLogger(__name__)
-        auth_header = request.headers.get("Authorization")
+        start_time = time.time()
+        
+        headers = Headers(scope=scope)
+        auth_header = headers.get("Authorization")
         has_auth = "Yes" if auth_header else "No"
         auth_type = auth_header.split()[0] if auth_header else None
-        logger.info(f"{request.method} {request.url.path} - {request.client.host} - Auth: {has_auth} (Type: {auth_type})")
+        path = scope.get("path", "")
+        method = scope.get("method", "")
+        
+        client = scope.get("client")
+        host = client[0] if client else "unknown"
 
+        logger.info(f"{method} {path} - {host} - Auth: {has_auth} (Type: {auth_type})")
 
-        response = await call_next(request)
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                process_time = time.time() - start_time
+                resp_headers = MutableHeaders(scope=message)
+                resp_headers["X-Process-Time"] = str(process_time)
+                status_code = message.get("status", 200)
+                logger.info(f"Response: {status_code} - {process_time:.3f}s")
+            await send(message)
 
-        # Log response time
-        process_time = time.time() - start_time
-        response.headers["X-Process-Time"] = str(process_time)
-
-        logger.info(f"Response: {response.status_code} - {process_time:.3f}s")
-
-        return response
+        await self.app(scope, receive, send_wrapper)
 
 # API Key authentication
 API_KEY_NAME = "X-API-Key"
