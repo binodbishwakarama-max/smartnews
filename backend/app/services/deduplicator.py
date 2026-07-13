@@ -68,5 +68,34 @@ class Deduplicator:
         
         return max_sim > threshold
 
+    def is_duplicate_title(self, new_title: str, existing_titles: List[str], threshold: float = 0.65) -> bool:
+        """
+        Lightweight fallback title similarity check using Jaccard index.
+        Cleans and splits titles into word sets to compare overlap.
+        """
+        if not new_title or not existing_titles:
+            return False
+
+        def clean_tokens(title: str):
+            import re
+            cleaned = re.sub(r'[^\w\s]', '', title.lower())
+            return set(cleaned.split())
+
+        new_tokens = clean_tokens(new_title)
+        if not new_tokens:
+            return False
+
+        for title in existing_titles:
+            exist_tokens = clean_tokens(title)
+            if not exist_tokens:
+                continue
+            intersection = len(new_tokens & exist_tokens)
+            union = len(new_tokens | exist_tokens)
+            jaccard = intersection / union if union > 0 else 0
+            if jaccard > threshold:
+                logger.info(f"Duplicate title detected (Jaccard: {jaccard:.2f}): '{new_title}' matches '{title}'")
+                return True
+        return False
+
 # Singleton instance
 deduplicator = Deduplicator()

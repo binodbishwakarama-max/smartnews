@@ -73,6 +73,11 @@ export default function LivePulseWidget() {
     const [soundEnabled, setSoundEnabled] = useState(false);
     const { openReader } = useReader();
     const initialized = useRef(false);
+    const soundEnabledRef = useRef(soundEnabled);
+
+    useEffect(() => {
+        soundEnabledRef.current = soundEnabled;
+    }, [soundEnabled]);
 
     // Load initial 4 articles to seed the wire ticker
     useEffect(() => {
@@ -126,7 +131,7 @@ export default function LivePulseWidget() {
                         return [newEv, ...prev].slice(0, 8);
                     });
 
-                    if (soundEnabled) {
+                    if (soundEnabledRef.current) {
                         playNotificationChime();
                     }
                 } catch {}
@@ -134,7 +139,7 @@ export default function LivePulseWidget() {
         }
         connect();
         return () => es?.close();
-    }, [soundEnabled]);
+    }, []);
 
     // Sentiment breakdown metrics
     const total = events.length;

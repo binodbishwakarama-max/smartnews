@@ -8,6 +8,7 @@ import SearchBar from './SearchBar';
 import ThemeToggle from './ThemeToggle';
 import Sidebar from './Sidebar';
 import StreakBadge from './StreakBadge';
+import { API_ENDPOINTS } from '../lib/config';
 
 const CATEGORIES = [
     'For You', 'Latest', 'World', 'Business', 'Technology', 'Science', 'Health', 'Politics', 'Culture', 'Sports'
@@ -35,7 +36,7 @@ export default function Header() {
     useEffect(() => {
         async function fetchStats() {
             try {
-                const res = await fetch('http://127.0.0.1:8000/news/stats');
+                const res = await fetch(API_ENDPOINTS.STATS);
                 if (res.ok) {
                     const data = await res.json();
                     setStats(data);

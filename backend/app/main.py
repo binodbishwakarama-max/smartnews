@@ -25,6 +25,13 @@ from slowapi.middleware import SlowAPIMiddleware
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Run database migration checks once on startup
+    try:
+        from app.db.session import check_and_add_columns
+        check_and_add_columns()
+    except Exception as e:
+        logger.error("Failed to run database migrations at startup: %s", e)
+
     if settings.ENABLE_INLINE_SCRAPER_LOOP:
         try:
             import asyncio

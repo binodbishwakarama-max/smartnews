@@ -61,7 +61,28 @@ async function getTrending(): Promise<{ topic: string, article_count: number }[]
   }
 }
 
+import { Suspense } from 'react';
 import TrendingSidebar from '@/components/TrendingSidebar';
+
+function CategoryRowSkeleton({ category }: { category: string }) {
+  return (
+    <section className="py-12 border-t border-border animate-pulse">
+      <div className="flex items-center justify-between mb-8">
+        <div className="h-8 bg-border/40 w-48 rounded" />
+        <div className="h-4 bg-border/30 w-24 rounded" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="space-y-4">
+            <div className="aspect-[16/10] bg-border/20 w-full" />
+            <div className="h-4 bg-border/30 w-3/4 rounded" />
+            <div className="h-3 bg-border/20 w-1/2 rounded" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default async function Home({
   searchParams,
@@ -120,7 +141,9 @@ export default async function Home({
         {!category && (
           <div className="mt-24 space-y-16">
             {CATEGORIES.map(cat => (
-              <CategoryRow key={cat} category={cat} />
+              <Suspense key={cat} fallback={<CategoryRowSkeleton category={cat} />}>
+                <CategoryRow category={cat} />
+              </Suspense>
             ))}
           </div>
         )}

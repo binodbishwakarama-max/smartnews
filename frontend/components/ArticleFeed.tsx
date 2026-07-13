@@ -46,6 +46,10 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
     const { openReader } = useReader();
     const { toggleBookmark, isBookmarked } = useBookmarks();
     const cardRefs = useRef<React.RefObject<HTMLDivElement | null>[]>([]);
+    const articlesRef = useRef<Article[]>(articles);
+    useEffect(() => {
+        articlesRef.current = articles;
+    }, [articles]);
 
     if (cardRefs.current.length !== articles.length) {
         cardRefs.current = Array(articles.length)
@@ -203,38 +207,34 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
 
                     setLiveCount(c => c + 1);
 
-                    setArticles(prevArticles => {
-                        const exists = prevArticles.some(a => a.id === newArticle.id);
-                        if (exists) return prevArticles;
+                    const exists = articlesRef.current.some(a => a.id === newArticle.id);
+                    if (exists) return;
 
-                        setIncomingArticles(prevIncoming => {
-                            const incomingExists = prevIncoming.some(a => a.id === newArticle.id);
-                            if (incomingExists) return prevIncoming;
-                            const next = [newArticle, ...prevIncoming];
+                    setIncomingArticles(prevIncoming => {
+                        const incomingExists = prevIncoming.some(a => a.id === newArticle.id);
+                        if (incomingExists) return prevIncoming;
+                        const next = [newArticle, ...prevIncoming];
 
-                            // Auto-insert immediately when we hit the threshold
-                            if (next.length >= AUTO_INSERT_THRESHOLD) {
-                                // Schedule flush outside this render cycle
-                                setTimeout(() => {
-                                    setIncomingArticles(q => {
-                                        if (q.length === 0) return q;
-                                        const ids = new Set(q.map(a => a.id));
-                                        setJustInsertedIds(ids);
-                                        setArticles(prev => {
-                                            const existingIds = new Set(prev.map(a => a.id));
-                                            const toInsert = q.filter(a => !existingIds.has(a.id));
-                                            return [...toInsert, ...prev];
-                                        });
-                                        setTimeout(() => setJustInsertedIds(new Set()), 2500);
-                                        return [];
+                        // Auto-insert immediately when we hit the threshold
+                        if (next.length >= AUTO_INSERT_THRESHOLD) {
+                            // Schedule flush outside this render cycle
+                            setTimeout(() => {
+                                setIncomingArticles(q => {
+                                    if (q.length === 0) return q;
+                                    const ids = new Set(q.map(a => a.id));
+                                    setJustInsertedIds(ids);
+                                    setArticles(prev => {
+                                        const existingIds = new Set(prev.map(a => a.id));
+                                        const toInsert = q.filter(a => !existingIds.has(a.id));
+                                        return [...toInsert, ...prev];
                                     });
-                                }, 0);
-                            }
+                                    setTimeout(() => setJustInsertedIds(new Set()), 2500);
+                                    return [];
+                                });
+                            }, 0);
+                        }
 
-                            return next;
-                        });
-
-                        return prevArticles;
+                        return next;
                     });
                 } catch (err) {
                     console.error('Error parsing real-time article event:', err);

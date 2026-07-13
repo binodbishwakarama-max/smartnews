@@ -130,9 +130,9 @@ def cleanup_old_articles(
         logger.error(f"Error during cleanup: {e}")
         raise HTTPException(status_code=500, detail="Failed to cleanup old articles")
 
-async def run_scraping_task(max_articles: int):
+def run_scraping_task(max_articles: int):
     """
-    Background task to run the scraping process.
+    Background task to run the scraping process in a non-blocking thread pool.
     """
     db = SessionLocal()
     try:
@@ -142,6 +142,8 @@ async def run_scraping_task(max_articles: int):
         articles = scrape_all(max_articles)
 
         saved_count = 0
+        from app.services.quality import quality_engine
+
         for article_data in articles:
             try:
                 # Check if article already exists
@@ -149,31 +151,80 @@ async def run_scraping_task(max_articles: int):
                 if existing:
                     continue
 
+                # Calculate dynamic quality scores
+                content = article_data['content']
+                title = article_data['title'][:500]
+                q_metrics = quality_engine.calculate_quality_score(content, title)
+
                 # Create new article
                 article = Article(
-                    title=article_data['title'][:500],  # Limit title length
-                    content=article_data['content'],
+                    title=title,
+                    content=content,
                     url=article_data['url'],
                     image_url=article_data.get('image'),
                     source=article_data.get('source', 'unknown'),
                     author=article_data.get('author'),
                     publish_date=article_data.get('publish_date'),
-                    summary=article_data.get('summary'),
+                    summary=article_data.get('summary') or (content[:250] + "..."),
                     category='General',  # Default category, could be enhanced with ML
-                    quality_score=5.0,  # Default quality score
-                    feed_score=5.0
+                    quality_score=q_metrics['score'],
+                    feed_score=q_metrics['score'],
+                    length_score=q_metrics['length_score'],
+                    readability_sub_score=q_metrics['readability_sub_score'],
+                    clickbait_penalty=q_metrics['clickbait_penalty'],
+                    caps_penalty=q_metrics['caps_penalty']
                 )
 
                 db.add(article)
-                db.commit()
                 saved_count += 1
 
             except Exception as e:
-                logger.error(f"Error saving article {article_data.get('url')}: {e}")
-                db.rollback()
+                logger.error(f"Error processing article {article_data.get('url')}: {e}")
                 continue
 
-        logger.info(f"Background scraping completed. Saved {saved_count} new articles out of {len(articles)} scraped")
+        if saved_count > 0:
+            try:
+                db.commit()
+                logger.info(f"Background scraping completed. Saved {saved_count} new articles out of {len(articles)} scraped")
+            except Exception as commit_err:
+                db.rollback()
+                logger.error(f"Failed to commit scraped articles batch: {commit_err}")
+                # Fallback to individual commits if batch commit fails
+                saved_count = 0
+                for article_data in articles:
+                    try:
+                        existing = db.query(Article).filter(Article.url == article_data['url']).first()
+                        if existing:
+                            continue
+                        content = article_data['content']
+                        title = article_data['title'][:500]
+                        q_metrics = quality_engine.calculate_quality_score(content, title)
+                        article = Article(
+                            title=title,
+                            content=content,
+                            url=article_data['url'],
+                            image_url=article_data.get('image'),
+                            source=article_data.get('source', 'unknown'),
+                            author=article_data.get('author'),
+                            publish_date=article_data.get('publish_date'),
+                            summary=article_data.get('summary') or (content[:250] + "..."),
+                            category='General',
+                            quality_score=q_metrics['score'],
+                            feed_score=q_metrics['score'],
+                            length_score=q_metrics['length_score'],
+                            readability_sub_score=q_metrics['readability_sub_score'],
+                            clickbait_penalty=q_metrics['clickbait_penalty'],
+                            caps_penalty=q_metrics['caps_penalty']
+                        )
+                        db.add(article)
+                        db.commit()
+                        saved_count += 1
+                    except Exception as fallback_err:
+                        db.rollback()
+                        logger.error(f"Fallback save failed for {article_data.get('url')}: {fallback_err}")
+                logger.info(f"Background scraping completed via fallback. Saved {saved_count} articles.")
+        else:
+            logger.info("Background scraping completed. No new articles to save.")
 
         # Run clustering
         try:

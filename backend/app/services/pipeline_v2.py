@@ -23,13 +23,21 @@ def process_and_save_refined_article(data: dict, source_name: str, hint_category
         # 2. Generate Embedding (Semantic Deduplication)
         embedding = deduplicator.get_embedding(f"{data['title']}\n{data['content'][:500]}")
         
-        # 3. Check for Semantic Duplicates
+        # 3. Check for Semantic / Fallback Title Duplicates
         recent_cutoff = datetime.utcnow() - timedelta(days=2)
         recent_articles = db.query(Article).filter(Article.created_at >= recent_cutoff).limit(1000).all()
-        recent_embeddings = [a.embedding for a in recent_articles if a.embedding]
         
-        if deduplicator.is_duplicate(embedding, recent_embeddings):
-            return False
+        if embedding:
+            recent_embeddings = [a.embedding for a in recent_articles if a.embedding]
+            if deduplicator.is_duplicate(embedding, recent_embeddings):
+                logger.info(f"Duplicate detected via semantic similarity: {data['title']}")
+                return False
+        else:
+            # Fallback to Jaccard title-similarity check
+            recent_titles = [a.title for a in recent_articles]
+            if deduplicator.is_duplicate_title(data['title'], recent_titles):
+                logger.info(f"Duplicate detected via fallback title Jaccard similarity: {data['title']}")
+                return False
 
         # 4. Smart Categorization with Hint
         category = smart_categorize(data['title'], data['content'], data['url'], hint_category)

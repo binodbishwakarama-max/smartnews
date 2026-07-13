@@ -85,6 +85,7 @@ def check_and_add_columns():
     except Exception as e:
         logger.error(f"Failed to migrate database columns: {e}")
 
-# Run automatic schema migration on startup
-check_and_add_columns()
+# Run automatic schema migration on startup (now called during FastAPI app lifespan)
+# check_and_add_columns()
+
 
