@@ -27,8 +27,6 @@ export interface Article {
 
 const CATEGORIES = ['World', 'Business', 'Technology', 'AI & Startups', 'Science', 'Health', 'Politics', 'Culture', 'Sports', 'Environment', 'Education'];
 
-import { apiRequest } from '@/lib/api';
-
 interface ArticlesResponse {
   articles?: Article[];
 }
@@ -39,10 +37,17 @@ async function getArticles(category?: string): Promise<Article[]> {
     if (category) url.searchParams.append('category', category);
     url.searchParams.append('limit', '20');
 
-    const data = await apiRequest<ArticlesResponse | Article[]>(url.toString(), {
+    const res = await fetch(url.toString(), {
       next: { revalidate: 120 },
+      headers: { 'Content-Type': 'application/json' },
     });
 
+    if (!res.ok) {
+      console.error('Failed to fetch articles:', res.status, res.statusText);
+      return [];
+    }
+
+    const data: ArticlesResponse | Article[] = await res.json();
     return Array.isArray(data) ? data : data.articles || [];
   } catch (error) {
     console.error('Failed to fetch articles:', error);
@@ -52,9 +57,14 @@ async function getArticles(category?: string): Promise<Article[]> {
 
 async function getTrending(): Promise<{ topic: string, article_count: number }[]> {
   try {
-    return await apiRequest<{ topic: string, article_count: number }[]>(API_ENDPOINTS.TRENDING, {
+    const res = await fetch(API_ENDPOINTS.TRENDING, {
       next: { revalidate: 300 },
+      headers: { 'Content-Type': 'application/json' },
     });
+
+    if (!res.ok) return [];
+
+    return await res.json();
   } catch (error) {
     console.error('Failed to fetch trending topics:', error);
     return [];

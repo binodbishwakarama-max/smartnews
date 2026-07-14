@@ -2,7 +2,7 @@ import logging
 import requests
 from bs4 import BeautifulSoup
 from newspaper import Article as NewsArticle
-from datetime import datetime
+from datetime import datetime, timezone
 from app.scraper.config import SourceConfig, SOURCES
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class ContentEngine:
                 'summary': art.summary, # Newspaper3k nlp() needs to be called for this, but we'll use raw text for ML
                 'image': art.top_image,
                 'author': ', '.join(art.authors) if art.authors else None,
-                'publish_date': art.publish_date or datetime.utcnow(),
+                'publish_date': art.publish_date or datetime.now(timezone.utc),
                 'url': url
             }
         except Exception as e:

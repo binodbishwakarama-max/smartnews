@@ -42,8 +42,8 @@ If you haven't already pushed your committed changes to GitHub:
    * **Name**: `smartnews-api`
    * **Root Directory**: `backend`
    * **Runtime**: `Python 3`
-   * **Build Command**: `pip install -r requirements.txt`
-   * **Start Command**: `gunicorn app.main:app -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120`
+   * **Build Command**: `pip install -r requirements.txt && python -c "import nltk; nltk.download('punkt_tab', quiet=True); nltk.download('punkt', quiet=True)"`
+   * **Start Command**: `gunicorn app.main:app -w 1 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 300`
 5. Click **Advanced** and add the following **Environment Variables**:
    * `DATABASE_URL`: *Paste the Supabase Connection URI copied in Step 1*
    * `SECRET_KEY`: *Generate a random key (e.g. run `openssl rand -hex 32`)*

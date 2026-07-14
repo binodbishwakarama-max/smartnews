@@ -6,7 +6,7 @@ from app.db.session import SessionLocal
 from app.models.article import Article
 from app.scraper.scraper import scrape_all
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from auth import require_admin_access
 from app.core.limiter import limiter
 
@@ -47,7 +47,7 @@ async def trigger_scraping(
         "message": "Scraping started in background",
         "max_articles": max_articles,
         "status": "running",
-        "timestamp": datetime.utcnow()
+        "timestamp": datetime.now(timezone.utc)
     }
 
 @router.get("/status", response_model=Dict)
@@ -73,7 +73,7 @@ def get_scraping_status(db: Session = Depends(get_db)):
 
         # Get recent articles (last 24 hours)
         from datetime import datetime, timedelta
-        yesterday = datetime.utcnow() - timedelta(hours=24)
+        yesterday = datetime.now(timezone.utc) - timedelta(hours=24)
         recent_count = db.query(Article).filter(Article.created_at >= yesterday).count()
 
         # Get category distribution
@@ -87,7 +87,7 @@ def get_scraping_status(db: Session = Depends(get_db)):
             "recent_articles_24h": recent_count,
             "sources": {source: count for source, count in source_stats},
             "categories": {category: count for category, count in category_stats},
-            "last_updated": datetime.utcnow()
+            "last_updated": datetime.now(timezone.utc)
         }
 
     except Exception as e:
@@ -112,7 +112,7 @@ def cleanup_old_articles(
     """
     try:
         from datetime import datetime, timedelta
-        cutoff_date = datetime.utcnow() - timedelta(days=days_old)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_old)
 
         deleted_count = db.query(Article).filter(Article.created_at < cutoff_date).delete()
         db.commit()

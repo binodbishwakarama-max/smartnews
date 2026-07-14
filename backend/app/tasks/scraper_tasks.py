@@ -3,7 +3,7 @@ from app.scraper.scraper import scrape_all
 from app.db.session import SessionLocal
 from app.models.article import Article
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ def scrape_news_task(max_articles: int = 100):
             "saved_count": saved_count,
             "skipped_count": skipped_count,
             "error_count": error_count,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
         logger.info(f"Scheduled scraping completed: {result}")
@@ -81,7 +81,7 @@ def scrape_news_task(max_articles: int = 100):
         return {
             "status": "failed",
             "error": str(e),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     finally:
         db.close()
@@ -101,8 +101,8 @@ def daily_cleanup_task(days_old: int = 30):
 
     db = SessionLocal()
     try:
-        from datetime import datetime, timedelta
-        cutoff_date = datetime.utcnow() - timedelta(days=days_old)
+        from datetime import timedelta
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_old)
 
         # Get count before deletion for reporting
         old_count = db.query(Article).filter(Article.created_at < cutoff_date).count()
@@ -116,7 +116,7 @@ def daily_cleanup_task(days_old: int = 30):
             "deleted_count": deleted_count,
             "old_count": old_count,
             "cutoff_date": cutoff_date.isoformat(),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
         logger.info(f"Daily cleanup completed: {result}")
@@ -128,7 +128,7 @@ def daily_cleanup_task(days_old: int = 30):
         return {
             "status": "failed",
             "error": str(e),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     finally:
         db.close()

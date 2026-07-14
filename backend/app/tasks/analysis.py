@@ -2,7 +2,7 @@ from app.worker import celery_app
 from app.db.session import SessionLocal
 from app.models.article import Article, TrendingTopic
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from collections import Counter
 import re
@@ -20,7 +20,7 @@ def analyze_trends_task():
     
     try:
         # 1. Get articles from the last 12 hours
-        window = datetime.utcnow() - timedelta(hours=12)
+        window = datetime.now(timezone.utc) - timedelta(hours=12)
         recent_articles = db.query(Article).filter(Article.publish_date >= window).all()
         
         if not recent_articles:

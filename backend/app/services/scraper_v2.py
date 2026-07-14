@@ -2,7 +2,7 @@ import logging
 import requests
 from bs4 import BeautifulSoup
 from typing import List, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 from newspaper import Article as NewspaperArticle
 
 logger = logging.getLogger(__name__)
@@ -146,7 +146,7 @@ class ScraperV2:
                 'title': clean_text(article.title),
                 'content': clean_text(article.text), # Ensure this is plain text
                 'author': clean_text(", ".join(article.authors)),
-                'publish_date': article.publish_date or datetime.utcnow(),
+                'publish_date': article.publish_date or datetime.now(timezone.utc),
                 'image_url': article.top_image,
                 'url': url
             }

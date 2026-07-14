@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.article import Article
@@ -24,7 +24,7 @@ def process_and_save_refined_article(data: dict, source_name: str, hint_category
         embedding = deduplicator.get_embedding(f"{data['title']}\n{data['content'][:500]}")
         
         # 3. Check for Semantic / Fallback Title Duplicates
-        recent_cutoff = datetime.utcnow() - timedelta(days=2)
+        recent_cutoff = datetime.now(timezone.utc) - timedelta(days=2)
         recent_articles = db.query(Article).filter(Article.created_at >= recent_cutoff).limit(1000).all()
         
         if embedding:
@@ -88,7 +88,7 @@ def process_and_save_refined_article(data: dict, source_name: str, hint_category
                 "image_url": article.image_url,
                 "category": article.category,
                 "source": article.source,
-                "publish_date": article.publish_date.isoformat() if article.publish_date else datetime.utcnow().isoformat(),
+                "publish_date": article.publish_date.isoformat() if article.publish_date else datetime.now(timezone.utc).isoformat(),
                 "quality_score": article.quality_score,
                 "feed_score": article.feed_score
             })

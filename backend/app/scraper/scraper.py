@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from newspaper import Article as NewsArticle
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import logging
 import random
@@ -51,7 +51,7 @@ def fetch_article(url: str, timeout: int = REQUEST_TIMEOUT, max_retries: int = 3
                 'content': art.text.strip(),
                 'image': art.top_image,
                 'author': ', '.join(art.authors) if art.authors else None,
-                'publish_date': art.publish_date or datetime.utcnow(),
+                'publish_date': art.publish_date or datetime.now(timezone.utc),
                 'url': url,
                 'summary': art.summary if hasattr(art, 'summary') and art.summary else None
             }
@@ -143,25 +143,35 @@ def scrape_cnn() -> List[str]:
 
 def scrape_theverge():
     urls = []
-    r = requests.get('https://www.theverge.com')
-    soup = BeautifulSoup(r.text, 'html.parser')
-    for a in soup.select('a')[:80]:
-        href = a.get('href')
-        if href and href.startswith('/') and len(href) > 20: # Rough length check for article slugs
-            urls.append('https://www.theverge.com' + href)
+    try:
+        headers = {'User-Agent': random.choice(USER_AGENTS)}
+        r = requests.get('https://www.theverge.com', headers=headers, timeout=REQUEST_TIMEOUT)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, 'html.parser')
+        for a in soup.select('a')[:80]:
+            href = a.get('href')
+            if href and href.startswith('/') and len(href) > 20: # Rough length check for article slugs
+                urls.append('https://www.theverge.com' + href)
+    except Exception as e:
+        logger.error(f'Failed to scrape The Verge: {e}')
     return list(set(urls))[:50]
 
 def scrape_timesofindia():
     urls = []
-    r = requests.get('https://timesofindia.indiatimes.com')
-    soup = BeautifulSoup(r.text, 'html.parser')
-    for a in soup.select('a')[:100]:
-        href = a.get('href')
-        if href and 'articleshow' in href:
-            if href.startswith('/'):
-                urls.append('https://timesofindia.indiatimes.com' + href)
-            else:
-                urls.append(href)
+    try:
+        headers = {'User-Agent': random.choice(USER_AGENTS)}
+        r = requests.get('https://timesofindia.indiatimes.com', headers=headers, timeout=REQUEST_TIMEOUT)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, 'html.parser')
+        for a in soup.select('a')[:100]:
+            href = a.get('href')
+            if href and 'articleshow' in href:
+                if href.startswith('/'):
+                    urls.append('https://timesofindia.indiatimes.com' + href)
+                else:
+                    urls.append(href)
+    except Exception as e:
+        logger.error(f'Failed to scrape Times of India: {e}')
     return list(set(urls))[:50]
 
 def scrape_hackernews():

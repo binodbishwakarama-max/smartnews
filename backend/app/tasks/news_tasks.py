@@ -5,7 +5,7 @@ from app.services.pipeline_v2 import run_premium_source_scrape
 from app.db.session import SessionLocal
 from app.models.article import Article, TrendingTopic
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ def analyze_trends_task():
     try:
         # Simple trending logic: Most frequent categories/keywords in recent articles
         # In a real system, we'd use NLTK/SpaCy for entity extraction
-        recent_cutoff = datetime.utcnow() - timedelta(hours=24)
+        recent_cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
         articles = db.query(Article).filter(Article.created_at >= recent_cutoff).all()
         
         topic_counts = {}
@@ -60,7 +60,7 @@ def analyze_trends_task():
             existing = db.query(TrendingTopic).filter(TrendingTopic.topic == topic).first()
             if existing:
                 existing.article_count = count
-                existing.last_updated = datetime.utcnow()
+                existing.last_updated = datetime.now(timezone.utc)
             else:
                 new_topic = TrendingTopic(topic=topic, article_count=count)
                 db.add(new_topic)

@@ -13,6 +13,8 @@ COPY . .
 
 # Render injects PORT at runtime (usually 10000, not 8000)
 ENV PORT=8000
+ENV PYTHONUNBUFFERED=1
 
 # Shell form so $PORT is expanded at runtime
-CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
+# Use 1 worker for Render free tier (512MB RAM) with 300s timeout for cold starts
+CMD gunicorn app.main:app -w 1 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 300 --access-logfile - --error-logfile -

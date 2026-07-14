@@ -17,8 +17,6 @@ import time
 # Setup logging
 logger = setup_logging(settings.LOG_LEVEL)
 
-logger = logging.getLogger(__name__)
-
 from app.core.limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -26,6 +24,15 @@ from slowapi.middleware import SlowAPIMiddleware
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Pre-download NLTK data required by newspaper3k (critical for Render native runtime)
+    try:
+        import nltk
+        nltk.download('punkt_tab', quiet=True)
+        nltk.download('punkt', quiet=True)
+        logger.info("NLTK data verified/downloaded successfully")
+    except Exception as e:
+        logger.warning("NLTK data download failed (non-fatal): %s", e)
+
     # Run database migration checks once on startup
     try:
         from app.db.session import check_and_add_columns
@@ -101,6 +108,7 @@ else:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

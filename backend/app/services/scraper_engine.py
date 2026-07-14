@@ -1,6 +1,6 @@
 import logging
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from bs4 import BeautifulSoup
 from newspaper import Article as NewspaperArticle
 
@@ -35,7 +35,7 @@ class BaseScraper:
                 "summary": "",  # To be filled by AI
                 "url": url,
                 "image_url": article.top_image,
-                "publish_date": article.publish_date or datetime.utcnow(),
+                "publish_date": article.publish_date or datetime.now(timezone.utc),
                 "author": ", ".join(article.authors),
             }
         except Exception as e:
