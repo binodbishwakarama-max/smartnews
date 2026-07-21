@@ -38,7 +38,7 @@ def get_articles(
     # Exclude non-lead duplicate cluster articles in main feed requests
     # Bypassed if doing specific text search or source filter to keep those searches transparent
     if not (search and search.strip()) and not source:
-        query = query.filter(or_(Article.cluster_id == None, Article.cluster_id == Article.id))
+        query = query.filter(or_(Article.cluster_id.is_(None), Article.cluster_id == Article.id))
     
     # Category filter
     if category and category.lower() != "all":
