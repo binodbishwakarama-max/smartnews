@@ -54,14 +54,19 @@ export default function AdminDashboard() {
         }
     }, [isLoaded, isSignedIn, router]);
 
-    const loadStatus = async () => {
+    const loadStatus = async (retryCount = 0) => {
         try {
             setLoading(true);
             const data = await getScraperStatus();
             setStatus(data);
             setError('');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load scraper status');
+            const errMsg = err instanceof Error ? err.message : 'Failed to load scraper status';
+            if (retryCount < 2 && (errMsg.includes('Authentication') || errMsg.includes('API Error'))) {
+                setTimeout(() => loadStatus(retryCount + 1), 1200);
+                return;
+            }
+            setError(errMsg);
             console.error('Error loading status:', err);
         } finally {
             setLoading(false);
@@ -311,7 +316,7 @@ export default function AdminDashboard() {
 
                             {/* Refresh Status */}
                             <Button
-                                onClick={loadStatus}
+                                onClick={() => loadStatus()}
                                 disabled={loading}
                                 variant="outline"
                                 className="w-full border-2 border-border hover:bg-muted font-black uppercase tracking-widest text-xs py-5 rounded-xl transition-all"

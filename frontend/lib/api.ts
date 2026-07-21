@@ -122,6 +122,12 @@ export async function apiRequest<T = unknown>(
         }
     }
 
+    if (!token && requireAuth && globalTokenGetter) {
+        // Clerk session token might be resolving, wait 600ms and retry
+        await sleep(600);
+        token = await globalTokenGetter();
+    }
+
     if (!token && requireAuth) {
         throw new Error('Authentication required');
     }
