@@ -10,6 +10,7 @@ router = APIRouter(
     responses={404: {"description": "Trending topics not found"}}
 )
 
+@router.get("")
 @router.get("/", response_model=List[TrendingTopicSchema])
 def get_trending(
     db: Session = Depends(get_db),

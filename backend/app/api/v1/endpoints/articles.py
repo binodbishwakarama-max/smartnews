@@ -8,6 +8,7 @@ from app.core.limiter import limiter
 
 router = APIRouter()
 
+@router.get("")
 @router.get("/")
 def get_articles(
     db: Session = Depends(get_db), 
