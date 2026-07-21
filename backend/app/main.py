@@ -33,12 +33,15 @@ async def lifespan(_: FastAPI):
     except Exception as e:
         logger.warning("NLTK data download failed (non-fatal): %s", e)
 
-    # Run database migration checks once on startup
+    # Ensure database tables exist and schema migrations run
     try:
-        from app.db.session import check_and_add_columns
+        from app.db.session import Base, engine, check_and_add_columns
+        import app.models.article  # Ensure models are registered with Base metadata
+        Base.metadata.create_all(bind=engine)
         check_and_add_columns()
+        logger.info("Database tables verified/created successfully")
     except Exception as e:
-        logger.error("Failed to run database migrations at startup: %s", e)
+        logger.error("Failed to run database initialization at startup: %s", e)
 
     if settings.ENABLE_INLINE_SCRAPER_LOOP:
         try:
