@@ -1,9 +1,8 @@
 """
-Utility to generate beautiful placeholder images for articles without images
+Utility to generate lightweight SVG placeholder images for articles without images.
+No external dependencies required (no Pillow needed).
 """
-from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
-import base64
+import urllib.parse
 
 # Category color scheme matching the frontend
 CATEGORY_COLORS = {
@@ -22,71 +21,64 @@ CATEGORY_COLORS = {
     'General': '#6B7280'
 }
 
+# Category icons (simple unicode glyphs for SVG text)
+CATEGORY_ICONS = {
+    'Technology': '⚙',
+    'AI & Startups': '🤖',
+    'Business & Finance': '📈',
+    'Business': '📈',
+    'Science': '🔬',
+    'Health': '❤',
+    'Education': '📚',
+    'Politics': '🏛',
+    'World': '🌍',
+    'Environment': '🌱',
+    'Sports': '⚽',
+    'Culture': '🎭',
+    'General': '📰'
+}
+
+
+def _escape_xml(text: str) -> str:
+    """Escape text for safe SVG embedding."""
+    return (text
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('"', '&quot;')
+            .replace("'", '&apos;'))
+
+
 def generate_placeholder_image(category: str, title: str) -> str:
     """
-    Generate a beautiful gradient placeholder image for articles without images.
+    Generate a lightweight SVG placeholder image for articles without images.
     Returns a data URI that can be stored directly in the database.
+    No external dependencies needed.
     """
-    try:
-        # Create image with category color
-        width, height = 1200, 630
-        base_color = CATEGORY_COLORS.get(category, '#6B7280')
-        
-        # Convert hex to RGB
-        base_color = base_color.lstrip('#')
-        r, g, b = tuple(int(base_color[i:i+2], 16) for i in (0, 2, 4))
-        
-        img = Image.new('RGB', (width, height), color=(r, g, b))
-        draw = ImageDraw.Draw(img)
-        
-        # Add subtle gradient overlay (darker at bottom)
-        for y in range(height):
-            alpha = int(50 * (y / height))
-            overlay_color = (max(0, r - alpha), max(0, g - alpha), max(0, b - alpha))
-            draw.line([(0, y), (width, y)], fill=overlay_color)
-        
-        # Add text
-        try:
-            font_category = ImageFont.truetype("arial.ttf", 32)
-            font_title = ImageFont.truetype("arialbd.ttf", 48)
-        except:
-            font_category = ImageFont.load_default()
-            font_title = ImageFont.load_default()
-        
-        # Draw category badge
-        category_text = category.upper()
-        draw.text((50, 50), category_text, fill='rgba(255,255,255,0.9)', font=font_category)
-        
-        # Draw title (truncated)
-        title_truncated = (title[:60] + "...") if len(title) > 60 else title
-        
-        # Multi-line title support
-        words = title_truncated.split()
-        lines = []
-        current_line = []
-        for word in words:
-            test_line = ' '.join(current_line + [word])
-            if len(test_line) > 40:
-                lines.append(' '.join(current_line))
-                current_line = [word]
-            else:
-                current_line.append(word)
-        if current_line:
-            lines.append(' '.join(current_line))
-        
-        # Draw title lines
-        y_offset = height - 180
-        for line in lines[:3]:  # Max 3 lines
-            draw.text((50, y_offset), line, fill='white', font=font_title)
-            y_offset += 60
-        
-        # Save to base64 data URI
-        buffered = BytesIO()
-        img.save(buffered, format="JPEG", quality=85)
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        
-        return f"data:image/jpeg;base64,{img_str}"
-    
-    except Exception as e:
-        # Fallback to a simple colored rectangle
-        return f"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='630'%3E%3Crect width='1200' height='630' fill='{CATEGORY_COLORS.get(category, '#6B7280')}'/%3E%3C/svg%3E"
+    base_color = CATEGORY_COLORS.get(category, '#6B7280')
+    icon = CATEGORY_ICONS.get(category, '📰')
+    category_label = _escape_xml(category.upper())
+
+    # Truncate and escape title
+    title_clean = _escape_xml(title[:60] + '...' if len(title) > 60 else title)
+
+    # Create a visually appealing gradient SVG
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:{base_color};stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:{base_color};stop-opacity:0.7"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="0" y="450" width="1200" height="180" fill="rgba(0,0,0,0.3)"/>
+  <text x="60" y="100" font-family="system-ui,sans-serif" font-size="28" font-weight="700"
+        fill="rgba(255,255,255,0.8)" letter-spacing="4">{category_label}</text>
+  <text x="600" y="300" font-family="system-ui,sans-serif" font-size="80"
+        fill="rgba(255,255,255,0.15)" text-anchor="middle" dominant-baseline="middle">{icon}</text>
+  <text x="60" y="540" font-family="Georgia,serif" font-size="32" font-weight="700"
+        fill="white">{title_clean}</text>
+</svg>'''
+
+    encoded = urllib.parse.quote(svg)
+    return f"data:image/svg+xml,{encoded}"

@@ -42,8 +42,8 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     version: str
-    timestamp: str
-    database: str
+    timestamp: Optional[str] = None
+    database: Optional[str] = None
     database_error: Optional[str] = None
 
 class TrendingTopic(BaseModel):

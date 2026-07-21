@@ -6,7 +6,6 @@ from app.models.article import TrendingTopic
 from app.api.v1.schemas import TrendingTopic as TrendingTopicSchema
 
 router = APIRouter(
-    prefix="/trending",
     tags=["trending"],
     responses={404: {"description": "Trending topics not found"}}
 )

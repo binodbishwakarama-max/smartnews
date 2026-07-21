@@ -14,7 +14,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1
 export const API_ENDPOINTS = {
     ARTICLES: `${API_BASE_URL}/api/v1/articles`,
     SEARCH: `${API_BASE_URL}/api/v1/articles/search`,
-    TRENDING: `${API_BASE_URL}/api/v1/trending`,
+    TRENDING: `${API_BASE_URL}/api/v1/trending/`,
     STATS: `${API_BASE_URL}/news/stats`,
     QUICK_FEED: `${API_BASE_URL}/news/quick-feed`,
     HEALTH: `${API_BASE_URL}/health`,

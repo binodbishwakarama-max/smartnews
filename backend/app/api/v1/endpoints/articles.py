@@ -183,9 +183,38 @@ def search_articles(
         Article.publish_date.desc()
     ).offset(offset).limit(limit).all()
     
+    # Serialize results to dicts to avoid JSON serialization errors
+    serialized_results = [
+        {
+            "id": a.id,
+            "title": a.title,
+            "slug": a.slug,
+            "content": a.content,
+            "summary": a.summary,
+            "source": a.source,
+            "url": a.url,
+            "image_url": a.image_url,
+            "author": a.author,
+            "publish_date": a.publish_date,
+            "category": a.category,
+            "region": a.region,
+            "tags": a.tags,
+            "sentiment_score": a.sentiment_score,
+            "quality_score": a.quality_score,
+            "feed_score": a.feed_score,
+            "is_featured": a.is_featured,
+            "is_clickbait": a.is_clickbait,
+            "read_time_minutes": a.read_time_minutes,
+            "view_count": a.view_count,
+            "created_at": a.created_at,
+            "updated_at": a.updated_at,
+        }
+        for a in results
+    ]
+    
     return {
         "query": q,
-        "results": results,
+        "results": serialized_results,
         "total": total_count,
         "limit": limit,
         "offset": offset

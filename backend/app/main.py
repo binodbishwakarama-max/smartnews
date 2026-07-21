@@ -6,7 +6,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from app.api.v1.routers import api_router
 from app.core.config import settings
 from app.core.security import SecurityHeadersMiddleware, RequestLoggingMiddleware
-from app.api.v1.endpoints import news
+from app.api.v1.endpoints import news  # Used for direct /news mount
 from app.api.v1.schemas import HealthResponse
 from app.core.logging import setup_logging
 from auth import require_admin_access
@@ -155,6 +155,8 @@ class ErrorHandlingMiddleware:
 app.add_middleware(ErrorHandlingMiddleware)
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+# Mount news router directly at /news for backward compatibility with frontend
+# (The same router is also available at /api/v1/news via api_router)
 app.include_router(news.router, prefix="/news", tags=["news"])
 
 @app.get("/health", response_model=HealthResponse)

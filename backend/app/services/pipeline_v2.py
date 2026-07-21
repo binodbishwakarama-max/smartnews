@@ -1,4 +1,6 @@
 import logging
+import re
+import hashlib
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
@@ -10,6 +12,27 @@ from app.utils.source import normalize_source_domain
 from app.services.quality import quality_engine
 
 logger = logging.getLogger(__name__)
+
+
+def generate_slug(title: str, url: str) -> str:
+    """Generate a URL-safe slug from article title + url hash for uniqueness."""
+    if not title:
+        return hashlib.md5(url.encode()).hexdigest()[:12]
+    # Lowercase, replace non-alphanum with hyphens, collapse multiples
+    slug = re.sub(r'[^a-z0-9]+', '-', title.lower().strip()).strip('-')
+    # Truncate to 80 chars and append short hash for uniqueness
+    slug = slug[:80].rstrip('-')
+    url_hash = hashlib.md5(url.encode()).hexdigest()[:6]
+    return f"{slug}-{url_hash}"
+
+
+def calculate_read_time(content: str) -> int:
+    """Estimate read time in minutes (avg 200 words/min)."""
+    if not content:
+        return 1
+    word_count = len(content.split())
+    minutes = max(1, round(word_count / 200))
+    return minutes
 
 def process_and_save_refined_article(data: dict, source_name: str, hint_category: str = None) -> bool:
     """Refined Article Pipeline: Clean -> Embed -> Deduplicate -> Categorize -> Save"""
@@ -54,6 +77,7 @@ def process_and_save_refined_article(data: dict, source_name: str, hint_category
         # 6. Save to DB
         article = Article(
             title=data['title'],
+            slug=generate_slug(data['title'], data['url']),
             content=data['content'],
             url=data['url'],
             image_url=image_url,
@@ -69,6 +93,7 @@ def process_and_save_refined_article(data: dict, source_name: str, hint_category
             clickbait_penalty=q_metrics['clickbait_penalty'],
             caps_penalty=q_metrics['caps_penalty'],
             feed_score=q_metrics['score'],
+            read_time_minutes=calculate_read_time(data['content']),
             summary=data['content'][:250] + "..."
         )
         db.add(article)
