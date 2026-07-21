@@ -63,25 +63,56 @@ def check_and_add_columns():
         from sqlalchemy import inspect
         inspector = inspect(engine)
         if not inspector.has_table("articles"):
-            logger.info("Table 'articles' does not exist yet. Skipping database migrations.")
+            logger.info("Table 'articles' does not exist yet.")
             return
+            
         columns = [col["name"] for col in inspector.get_columns("articles")]
         
-        # Column migrations
-        if "cluster_id" not in columns:
-            logger.info("Migrating articles table: Adding cluster_id column...")
-            with engine.begin() as conn:
-                conn.execute(text("ALTER TABLE articles ADD COLUMN cluster_id INTEGER NULL"))
+        # All potential optional/new columns
+        column_definitions = {
+            "slug": "VARCHAR NULL",
+            "cluster_id": "INTEGER NULL",
+            "region": "VARCHAR NULL",
+            "tags": "VARCHAR NULL",
+            "sentiment_score": "FLOAT DEFAULT 0.0",
+            "bias_label": "VARCHAR NULL",
+            "quality_score": "FLOAT DEFAULT 0.0",
+            "readability_score": "FLOAT DEFAULT 0.0",
+            "feed_score": "FLOAT DEFAULT 0.0",
+            "is_featured": "BOOLEAN DEFAULT FALSE",
+            "is_clickbait": "BOOLEAN DEFAULT FALSE",
+            "length_score": "FLOAT DEFAULT 0.0",
+            "readability_sub_score": "FLOAT DEFAULT 0.0",
+            "clickbait_penalty": "FLOAT DEFAULT 0.0",
+            "caps_penalty": "FLOAT DEFAULT 0.0",
+            "read_time_minutes": "INTEGER DEFAULT 1",
+            "view_count": "INTEGER DEFAULT 0",
+        }
+        
+        with engine.begin() as conn:
+            for col_name, col_type in column_definitions.items():
+                if col_name not in columns:
+                    logger.info(f"Migrating articles table: Adding '{col_name}' column...")
+                    try:
+                        conn.execute(text(f"ALTER TABLE articles ADD COLUMN {col_name} {col_type}"))
+                    except Exception as col_err:
+                        logger.warning(f"Could not add column {col_name}: {col_err}")
                 
         # Index migrations for high performance scale
         indices = [idx["name"] for idx in inspector.get_indexes("articles")]
         with engine.begin() as conn:
             if "idx_articles_category_publish" not in indices:
                 logger.info("Creating performance index: idx_articles_category_publish...")
-                conn.execute(text("CREATE INDEX idx_articles_category_publish ON articles (category, publish_date DESC)"))
+                try:
+                    conn.execute(text("CREATE INDEX idx_articles_category_publish ON articles (category, publish_date DESC)"))
+                except Exception:
+                    pass
             if "idx_articles_feed_score" not in indices:
                 logger.info("Creating performance index: idx_articles_feed_score...")
-                conn.execute(text("CREATE INDEX idx_articles_feed_score ON articles (feed_score DESC)"))
+                try:
+                    conn.execute(text("CREATE INDEX idx_articles_feed_score ON articles (feed_score DESC)"))
+                except Exception:
+                    pass
     except Exception as e:
         logger.error(f"Failed to migrate database columns: {e}")
 
