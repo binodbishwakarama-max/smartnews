@@ -111,11 +111,23 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
             .map((_, i) => cardRefs.current[i] || { current: null });
     }
 
-    // Reset state when category changes
+    // Instant client-side feedback & state reset when category changes
     useEffect(() => {
         const hasArticles = initialArticles.length > 0;
         setIsUsingFallback(!hasArticles);
-        setArticles(hasArticles ? initialArticles : STATIC_FALLBACK_ARTICLES);
+        
+        if (hasArticles) {
+            setArticles(initialArticles);
+        } else if (category && category !== 'Latest' && category !== 'For You') {
+            // Immediate client-side filtering for zero-latency response on tap
+            const localMatches = articlesRef.current.filter(a => 
+                a.category && a.category.toLowerCase().includes(category.toLowerCase())
+            );
+            setArticles(localMatches.length > 0 ? localMatches : STATIC_FALLBACK_ARTICLES);
+        } else {
+            setArticles(STATIC_FALLBACK_ARTICLES);
+        }
+
         setIncomingArticles([]);
         setJustInsertedIds(new Set());
         setHasMore(true);

@@ -140,9 +140,10 @@ export default function Header() {
                                 <Link
                                     key={cat}
                                     href={cat === 'Latest' ? '/' : `/?category=${encodeURIComponent(cat)}`}
-                                    className={`text-[11px] font-mono font-black uppercase tracking-widest transition-all relative py-1 whitespace-nowrap
-                                        ${isActive ? 'text-accent border-b-2 border-accent' : 'hover:text-accent'}
-                                        ${isForYou ? 'flex items-center gap-1' : ''}
+                                    prefetch={true}
+                                    className={`text-[11px] font-mono font-black uppercase tracking-widest transition-all relative py-1.5 px-1 whitespace-nowrap active:scale-95 duration-100
+                                        ${isActive ? 'text-accent border-b-2 border-accent font-bold' : 'text-secondary hover:text-primary'}
+                                        ${isForYou ? 'flex items-center gap-1 text-gold' : ''}
                                     `}
                                 >
                                     {isForYou && <span className="text-[8px]">✦</span>}
