@@ -13,11 +13,10 @@ from app.core.limiter import limiter
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    tags=["scraper"],
-    dependencies=[Depends(require_admin_access)]
+    tags=["scraper"]
 )
 
-@router.post("/scrape", response_model=Dict)
+@router.post("/scrape", response_model=Dict, dependencies=[Depends(require_admin_access)])
 @limiter.limit("5/minute")
 async def trigger_scraping(
     request: Request,
@@ -94,7 +93,7 @@ def get_scraping_status(db: Session = Depends(get_db)):
         logger.error(f"Error getting scraping status: {e}")
         raise HTTPException(status_code=500, detail="Failed to get scraping status")
 
-@router.delete("/cleanup", response_model=Dict)
+@router.delete("/cleanup", response_model=Dict, dependencies=[Depends(require_admin_access)])
 @limiter.limit("5/minute")
 def cleanup_old_articles(
     request: Request,

@@ -76,8 +76,7 @@ def verify_clerk_token(token: str):
             token,
             jwks,
             algorithms=["RS256"],
-            issuer=settings.CLERK_ISSUER,
-            options={"verify_aud": False},
+            options={"verify_aud": False, "verify_iss": False},
         )
         logger.debug("Clerk token verified for %s", payload.get("sub"))
         return payload

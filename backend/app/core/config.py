@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "CHANGE_THIS_IN_PRODUCTION"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
-    CLERK_ISSUER: str = "https://premium-tiger-15.clerk.accounts.dev"
+    CLERK_ISSUER: str = "https://promoted-gecko-92.clerk.accounts.dev"
     
     # Debug mode
     DEBUG: bool = False
