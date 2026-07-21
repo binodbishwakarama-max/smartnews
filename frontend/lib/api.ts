@@ -77,7 +77,7 @@ function sleep(ms: number): Promise<void> {
 export async function checkBackendHealth(): Promise<boolean> {
     try {
         const response = await fetchWithTimeout(`${API_BASE_URL}/health`, {
-            timeout: 5000,
+            timeout: 12000,
             skipRetry: true,
         });
 

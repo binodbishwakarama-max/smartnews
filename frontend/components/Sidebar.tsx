@@ -36,14 +36,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         setError(null);
 
         try {
-            // Check backend health first
-            const isHealthy = await checkBackendHealth();
-            if (!isHealthy) {
-                setError('Backend service is currently unavailable');
-                return;
-            }
-
-            // Fetch data in parallel with error handling
+            // Fetch stats and quick feed in parallel directly
             const [statsData, feedData] = await Promise.all([
                 safeApiRequest<Stats>(API_ENDPOINTS.STATS),
                 safeApiRequest<Article[]>(API_ENDPOINTS.QUICK_FEED),
@@ -53,7 +46,13 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             if (feedData) setQuickFeed(feedData);
 
             if (!statsData && !feedData) {
-                setError('Unable to load data. Please try again.');
+                // If both fail, verify health status before setting error
+                const isHealthy = await checkBackendHealth();
+                if (!isHealthy) {
+                    setError('Backend service is currently unavailable');
+                } else {
+                    setError('Unable to load sidebar data. Please try again.');
+                }
             }
         } catch (err) {
             console.error('Error loading sidebar data:', err);
