@@ -76,11 +76,36 @@ SCRAPER_CONFIG = [
         ('https://www.nationalgeographic.com/environment', 'Environment')
     ]},
     
-    # India
+    # Indian News Powerhouses
     {'name': 'The Hindu', 'base_url': 'https://www.thehindu.com', 'feeds': [
         ('https://www.thehindu.com/news/national/', 'World'),
         ('https://www.thehindu.com/sci-tech/technology/', 'Technology'),
         ('https://www.thehindu.com/sport/', 'Sports')
+    ]},
+    {'name': 'Times of India', 'base_url': 'https://timesofindia.indiatimes.com', 'feeds': [
+        ('https://timesofindia.indiatimes.com/india', 'World'),
+        ('https://timesofindia.indiatimes.com/business', 'Business & Finance'),
+        ('https://timesofindia.indiatimes.com/sports', 'Sports')
+    ]},
+    {'name': 'NDTV News', 'base_url': 'https://www.ndtv.com', 'feeds': [
+        ('https://www.ndtv.com/india-news', 'World'),
+        ('https://www.ndtv.com/business', 'Business & Finance'),
+        ('https://www.ndtv.com/science', 'Science')
+    ]},
+    {'name': 'Indian Express', 'base_url': 'https://indianexpress.com', 'feeds': [
+        ('https://indianexpress.com/section/india/', 'World'),
+        ('https://indianexpress.com/section/technology/', 'Technology'),
+        ('https://indianexpress.com/section/sports/', 'Sports')
+    ]},
+    {'name': 'Hindustan Times', 'base_url': 'https://www.hindustantimes.com', 'feeds': [
+        ('https://www.hindustantimes.com/india-news', 'World'),
+        ('https://www.hindustantimes.com/business', 'Business & Finance'),
+        ('https://www.hindustantimes.com/sports', 'Sports')
+    ]},
+    {'name': 'Livemint', 'base_url': 'https://www.livemint.com', 'feeds': [
+        ('https://www.livemint.com/market', 'Business & Finance'),
+        ('https://www.livemint.com/technology', 'Technology'),
+        ('https://www.livemint.com/science', 'Science')
     ]},
     
     # Sports (Powerhouses)
@@ -119,7 +144,11 @@ class ScraperV2:
                     href = f"https://{domain}{href}"
                 
                 # Heuristics for news articles: long slugs, no query params, contains keywords
-                if len(href) > 25 and any(ext in href for ext in ['/202', '/news/', '/article/', 'articleshow', '/story/', '/sport/', '/national/']):
+                keywords = [
+                    '/202', '/news/', '/article/', 'articleshow', '/story/', '/sport/', 
+                    '/national/', '/india-news/', '/cities/', '/opinion/', '/business/', '/markets/'
+                ]
+                if len(href) > 25 and any(ext in href for ext in keywords):
                     links.append(href)
             
             return list(set(links))[:20] # Limit per feed to avoid overwhelming
