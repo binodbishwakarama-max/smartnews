@@ -40,9 +40,22 @@ def get_articles(
     if not (search and search.strip()) and not source:
         query = query.filter(or_(Article.cluster_id.is_(None), Article.cluster_id == Article.id))
     
-    # Category filter
+    # Category filter with smart keyword fallback
     if category and category.lower() != "all":
-        query = query.filter(Article.category.ilike(f"%{category}%"))
+        cat_term = f"%{category.strip()}%"
+        cat_query = query.filter(Article.category.ilike(cat_term))
+        if cat_query.count() > 0:
+            query = cat_query
+        else:
+            # Fallback: search across category, title, summary, and tags
+            query = query.filter(
+                or_(
+                    Article.category.ilike(cat_term),
+                    Article.title.ilike(cat_term),
+                    Article.summary.ilike(cat_term),
+                    Article.tags.ilike(cat_term)
+                )
+            )
     
     # Source filter
     if source:
