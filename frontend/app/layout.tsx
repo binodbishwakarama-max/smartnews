@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Suspense } from "react";
-import Header from "../components/Header";
 import "./globals.css";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { BookmarkProvider } from "../contexts/BookmarkContext";
@@ -65,14 +64,7 @@ export default function RootLayout({
                 <ReaderProvider>
                   <ErrorBoundary>
                     <BreakingNewsBar />
-                    <Suspense
-                      fallback={
-                        <div className="h-24 bg-muted animate-pulse border-b-2 border-black" />
-                      }
-                    >
-                      <Header />
-                    </Suspense>
-                    <main role="main">{children}</main>
+                    <main role="main" className="min-h-screen">{children}</main>
                   </ErrorBoundary>
                 </ReaderProvider>
               </BookmarkProvider>

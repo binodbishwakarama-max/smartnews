@@ -1,15 +1,25 @@
 'use client';
 import { useBookmarks } from '@/contexts/BookmarkContext';
 import { NewsCard } from '@/components/EditorialComponents';
-import { Bookmark, Inbox } from 'lucide-react';
+import { ArrowLeft, Bookmark, Inbox } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BookmarksPage() {
     const { bookmarks, isLoading } = useBookmarks();
 
     return (
-        <div className="min-h-screen bg-background text-primary selection:bg-accent selection:text-white">
-            <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="min-h-screen bg-background text-primary selection:bg-accent selection:text-white pb-20">
+            {/* Top Navigation Bar */}
+            <header className="sticky top-0 z-40 bg-card/95 dark:bg-background/95 backdrop-blur-md border-b border-border h-14 px-6 flex items-center justify-between">
+                <Link href="/" className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-secondary hover:text-accent transition-colors">
+                    <ArrowLeft className="w-4 h-4" /> Back to Newsroom
+                </Link>
+                <Link href="/" className="font-serif font-black text-lg tracking-tighter uppercase text-primary">
+                    SMART NEWS<span className="text-accent">.</span>
+                </Link>
+            </header>
+
+            <div className="max-w-7xl mx-auto px-6 py-8">
                 <div className="mb-12 border-b-4 border-black dark:border-white pb-6 flex items-end justify-between">
                     <div>
                         <h1 className="text-5xl md:text-7xl font-serif font-black tracking-tighter uppercase mb-4">
