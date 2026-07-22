@@ -485,7 +485,7 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
             )}
 
             {/* First Block of Grid Articles */}
-            <div className={`grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8 ${category ? 'py-4' : ''}`}>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 ${category ? 'py-4' : ''}`}>
                 {articlesBeforeRail.map((art, idx) => {
                     const idxInArticles = showHero ? idx + 1 : idx;
                     return (
@@ -515,7 +515,7 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
 
             {/* Remaining Grid Articles */}
             {articlesAfterRail.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8 mt-12">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8 mt-12">
                     {articlesAfterRail.map((art, idx) => {
                         const idxInArticles = showHero 
                             ? idx + 1 + articlesBeforeRail.length 

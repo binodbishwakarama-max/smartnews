@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState, useEffect, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Menu, Search } from 'lucide-react';
+import { Menu, Clock } from 'lucide-react';
 import { UserButton, SignedIn, SignedOut, SignInButton, SignUpButton } from '@clerk/nextjs';
 import SearchBar from './SearchBar';
 import ThemeToggle from './ThemeToggle';
@@ -22,18 +22,10 @@ export default function Header() {
     const currentCategory = searchParams.get('category') || 'Latest';
     const [stats, setStats] = useState<{ total_articles: number; new_today: number; status: string } | null>(null);
     const [currentDate, setCurrentDate] = useState<string>('');
-    const [fullDate, setFullDate] = useState<string>('');
     const mounted = useSyncExternalStore(subscribe, () => true, () => false);
 
     useEffect(() => {
-        const now = new Date();
-        setCurrentDate(now.toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-        }));
-        setFullDate(now.toLocaleDateString('en-US', {
+        setCurrentDate(new Date().toLocaleDateString('en-US', {
             weekday: 'short',
             month: 'short',
             day: 'numeric'
@@ -60,40 +52,49 @@ export default function Header() {
     return (
         <>
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-            <header className="hidden md:block bg-white dark:bg-[#121212] border-b border-neutral-200 dark:border-neutral-800 sticky top-0 z-50">
-                
-                {/* Row 1 — Thin Utility Strip */}
-                <div className="border-b border-neutral-200 dark:border-neutral-800">
-                    <div className="max-w-[1200px] mx-auto px-5 py-1.5 flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => setIsSidebarOpen(true)}
-                                className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors"
-                                aria-label="Open Menu"
-                            >
-                                <Menu className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
-                            </button>
-                            <SearchBar />
+            <header className="hidden md:block bg-background border-b border-border sticky top-0 z-50 transition-colors duration-200">
+                {/* 1. BBC Top Utility Header Bar */}
+                <div className="bg-black text-white text-xs font-sans py-2 px-6">
+                    <div className="max-w-7xl mx-auto flex items-center justify-between">
+                        <div className="flex items-center gap-6">
+                            {/* BBC Style Logo Blocks */}
+                            <Link href="/" className="flex items-center gap-1 font-black text-lg tracking-tighter">
+                                <span className="bg-accent text-white px-2 py-0.5 font-sans rounded-sm">S</span>
+                                <span className="bg-white text-black px-2 py-0.5 font-sans rounded-sm">N</span>
+                                <span className="ml-2 font-serif text-white tracking-normal font-bold">SMART NEWS</span>
+                            </Link>
+
+                            <div className="hidden lg:flex items-center gap-4 text-slate-300 text-[11px] font-medium border-l border-slate-700 pl-6">
+                                <span className="flex items-center gap-1.5 text-accent font-bold">
+                                    <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                                    LIVE FEED
+                                </span>
+                                {currentDate && <span>{currentDate}</span>}
+                                {stats && (
+                                    <span>Processed: <strong className="text-white font-bold">{stats.total_articles}</strong></span>
+                                )}
+                            </div>
                         </div>
 
-                        <span className="font-serif text-[11px] tracking-wide text-neutral-400 dark:text-neutral-500 hidden lg:block">
-                            {currentDate}
-                        </span>
-
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
                             <StreakBadge />
                             
                             {mounted ? (
                                 <>
                                     <SignedOut>
                                         <SignInButton mode="modal">
-                                            <button className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors">LOG IN</button>
+                                            <button className="hover:text-accent font-bold text-xs transition-colors">Sign In</button>
                                         </SignInButton>
+                                        <span className="text-slate-700">|</span>
+                                        <SignUpButton mode="modal">
+                                            <button className="bg-accent text-white font-bold text-xs px-3 py-1 rounded-full hover:bg-red-700 transition-colors">Register</button>
+                                        </SignUpButton>
                                     </SignedOut>
                                     <SignedIn>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-3">
                                             <UserButton afterSignOutUrl="/" />
-                                            <Link href="/saved" className="text-[11px] font-semibold text-neutral-500 hover:text-black dark:hover:text-white transition-colors">SAVED</Link>
+                                            <Link href="/saved" className="hover:text-accent font-bold text-xs transition-colors">Saved</Link>
+                                            <Link href="/admin" className="hover:text-accent font-bold text-xs transition-colors">Admin</Link>
                                         </div>
                                     </SignedIn>
                                 </>
@@ -104,66 +105,41 @@ export default function Header() {
                     </div>
                 </div>
 
-                {/* Row 2 — NYTimes-Style Serif Nameplate Masthead */}
-                <div className="border-b border-neutral-300 dark:border-neutral-700">
-                    <div className="max-w-[1200px] mx-auto px-5 py-3 flex items-center justify-center relative">
-                        {/* Left accent — live dot + stats */}
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-2 text-[10px] text-neutral-400 dark:text-neutral-500 font-sans">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
-                            <span className="uppercase tracking-widest font-semibold">Live</span>
-                            {stats && (
-                                <span className="border-l border-neutral-300 dark:border-neutral-700 pl-2 ml-1">
-                                    {stats.total_articles}+ stories
-                                </span>
-                            )}
-                        </div>
+                {/* 2. BBC Category Navigation Bar */}
+                <nav className="bg-card border-b border-border py-3">
+                    <div className="max-w-7xl mx-auto px-6 flex items-center justify-between gap-6">
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                            aria-label="Open Menu"
+                        >
+                            <Menu className="w-5 h-5 text-primary" />
+                        </button>
 
-                        {/* Center Nameplate */}
-                        <Link href="/" className="text-center">
-                            <h1 className="text-3xl lg:text-4xl font-serif font-black tracking-tight text-black dark:text-white leading-none">
-                                The Smart News
-                            </h1>
-                        </Link>
-
-                        {/* Right accent — date */}
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 hidden lg:block text-[10px] text-neutral-400 dark:text-neutral-500 uppercase tracking-widest font-sans font-semibold">
-                            {fullDate}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Row 3 — Section Navigation (pipe-separated) */}
-                <div className="border-b border-neutral-200 dark:border-neutral-800">
-                    <nav className="max-w-[1200px] mx-auto px-5 py-2 flex items-center justify-center">
-                        <div className="flex items-center gap-0 overflow-x-auto no-scrollbar">
-                            {CATEGORIES.map((cat, idx) => {
+                        <div className="flex gap-6 overflow-x-auto no-scrollbar flex-1 items-center">
+                            {CATEGORIES.map(cat => {
                                 const isActive = currentCategory === cat || (cat === 'Latest' && currentCategory === 'Latest');
                                 const isForYou = cat === 'For You';
                                 return (
-                                    <span key={cat} className="flex items-center">
-                                        {idx > 0 && (
-                                            <span className="text-neutral-300 dark:text-neutral-700 mx-3 select-none text-xs">|</span>
-                                        )}
-                                        <Link
-                                            href={cat === 'Latest' ? '/' : `/?category=${encodeURIComponent(cat)}`}
-                                            prefetch={true}
-                                            className={`text-[13px] font-sans font-semibold transition-all whitespace-nowrap
-                                                ${isActive 
-                                                    ? 'text-black dark:text-white border-b-2 border-black dark:border-white pb-0.5' 
-                                                    : 'text-neutral-500 dark:text-neutral-400 hover:text-black dark:hover:text-white'
-                                                }
-                                                ${isForYou ? 'flex items-center gap-1' : ''}
-                                            `}
-                                        >
-                                            {isForYou && <span className="text-amber-500 text-xs">✦</span>}
-                                            {cat}
-                                        </Link>
-                                    </span>
+                                    <Link
+                                        key={cat}
+                                        href={cat === 'Latest' ? '/' : `/?category=${encodeURIComponent(cat)}`}
+                                        prefetch={true}
+                                        className={`text-sm font-sans font-bold transition-all relative py-1 whitespace-nowrap
+                                            ${isActive ? 'text-accent border-b-2 border-accent' : 'text-secondary hover:text-primary'}
+                                            ${isForYou ? 'flex items-center gap-1 text-amber-500' : ''}
+                                        `}
+                                    >
+                                        {isForYou && <span className="text-xs">✦</span>}
+                                        {cat}
+                                    </Link>
                                 );
                             })}
                         </div>
-                    </nav>
-                </div>
+
+                        <SearchBar />
+                    </div>
+                </nav>
             </header>
         </>
     );
