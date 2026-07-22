@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import { useViewport } from '../../hooks/useViewport';
 import type { Article } from '../../app/page';
 import MobileLayout from './MobileLayout';
@@ -11,8 +12,6 @@ interface DeviceRouterProps {
     trending: { topic: string; article_count: number }[];
     category?: string;
 }
-
-import { useEffect } from 'react';
 
 export default function DeviceRouter({ articles, trending, category }: DeviceRouterProps) {
     const { device, isHydrated } = useViewport();
@@ -46,9 +45,33 @@ export default function DeviceRouter({ articles, trending, category }: DeviceRou
         router.push(url);
     };
 
+    // SSR & Pre-Hydration Protection: Use CSS breakpoint containers during initial render.
+    // This prevents Next.js SSR hydration mismatches that cause double-rendering or DOM text collisions.
     if (!isHydrated) {
-        // SSR Default: Render DesktopLayout cleanly during server hydration
-        return <DesktopLayout articles={articles} trending={trending} category={category} />;
+        return (
+            <>
+                <div className="block md:hidden">
+                    <MobileLayout
+                        articles={articles}
+                        category={category}
+                        onSelectCategory={handleSelectCategory}
+                    />
+                </div>
+                <div className="hidden md:block lg:hidden">
+                    <TabletLayout
+                        articles={articles}
+                        category={category}
+                    />
+                </div>
+                <div className="hidden lg:block">
+                    <DesktopLayout
+                        articles={articles}
+                        trending={trending}
+                        category={category}
+                    />
+                </div>
+            </>
+        );
     }
 
     if (device === 'mobile') {

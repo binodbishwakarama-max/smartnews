@@ -19,7 +19,7 @@ export default function MobileBottomNav({ onOpenMenu, onOpenSearch, onOpenPulse 
 
     return (
         <nav 
-            className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-panel border-t border-border/80 px-2 flex items-center justify-around select-none shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.4)]"
+            className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card dark:bg-slate-900 border-t border-border/80 px-2 flex items-center justify-around select-none shadow-[0_-8px_30px_rgba(0,0,0,0.15)]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)', height: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
             aria-label="Mobile Navigation Bar"
         >
