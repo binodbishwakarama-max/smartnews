@@ -23,7 +23,10 @@ export default function MobileLayout({ articles, category, onSelectCategory }: M
     const remainingArticles = articles.length > 1 ? articles.slice(1) : [];
 
     return (
-        <div className="min-h-screen bg-background text-primary selection:bg-accent selection:text-white pb-20 select-none">
+        <div 
+            className="min-h-screen bg-background text-primary selection:bg-accent selection:text-white select-none max-w-full overflow-x-hidden"
+            style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}
+        >
             {/* 1. Compact 56px Header */}
             <MobileHeader
                 onOpenMenu={() => setIsMenuOpen(true)}

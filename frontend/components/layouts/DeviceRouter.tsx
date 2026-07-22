@@ -12,9 +12,34 @@ interface DeviceRouterProps {
     category?: string;
 }
 
+import { useEffect } from 'react';
+
 export default function DeviceRouter({ articles, trending, category }: DeviceRouterProps) {
     const { device, isHydrated } = useViewport();
     const router = useRouter();
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const auditOverflow = () => {
+                const overflowing = [...document.querySelectorAll('*')].filter(
+                    el => el.getBoundingClientRect().right > window.innerWidth + 1
+                );
+                if (overflowing.length > 0) {
+                    console.warn('[Layout Audit] Horizontal overflowing elements detected:');
+                    console.table(
+                        overflowing.map(el => ({
+                            element: el.tagName,
+                            class: el.className,
+                            right: el.getBoundingClientRect().right,
+                            viewportWidth: window.innerWidth
+                        }))
+                    );
+                }
+            };
+            const timer = setTimeout(auditOverflow, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [device]);
 
     const handleSelectCategory = (cat: string) => {
         const url = cat === 'Latest' ? '/' : `/?category=${encodeURIComponent(cat)}`;

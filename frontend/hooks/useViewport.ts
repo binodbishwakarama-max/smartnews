@@ -1,42 +1,40 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useSyncExternalStore, useState, useEffect } from 'react';
 
 export type DeviceTier = 'mobile' | 'tablet' | 'desktop';
 
+function subscribe(callback: () => void) {
+    if (typeof window === 'undefined') return () => {};
+    window.addEventListener('resize', callback, { passive: true });
+    return () => window.removeEventListener('resize', callback);
+}
+
+function getSnapshot(): DeviceTier {
+    if (typeof window === 'undefined') return 'mobile';
+    const w = window.innerWidth;
+    if (w < 768) return 'mobile';
+    if (w >= 768 && w < 1024) return 'tablet';
+    return 'desktop';
+}
+
+function getServerSnapshot(): DeviceTier {
+    // Default server snapshot to 'mobile' (90% of traffic is mobile)
+    return 'mobile';
+}
+
 export function useViewport() {
-    const [device, setDevice] = useState<DeviceTier>('desktop');
-    const [width, setWidth] = useState<number>(1280);
+    const device = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
     const [isHydrated, setIsHydrated] = useState(false);
 
     useEffect(() => {
         setIsHydrated(true);
-
-        function handleResize() {
-            const currentWidth = window.innerWidth;
-            setWidth(currentWidth);
-
-            if (currentWidth < 768) {
-                setDevice('mobile');
-            } else if (currentWidth >= 768 && currentWidth < 1024) {
-                setDevice('tablet');
-            } else {
-                setDevice('desktop');
-            }
-        }
-
-        // Set initial viewport
-        handleResize();
-
-        window.addEventListener('resize', handleResize, { passive: true });
-        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     return {
         device,
-        width,
-        isMobile: isHydrated && device === 'mobile',
-        isTablet: isHydrated && device === 'tablet',
-        isDesktop: !isHydrated || device === 'desktop',
+        isMobile: device === 'mobile',
+        isTablet: device === 'tablet',
+        isDesktop: device === 'desktop',
         isHydrated
     };
 }

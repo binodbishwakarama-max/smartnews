@@ -73,7 +73,12 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             />
 
             {/* Panel */}
-            <aside className={`fixed inset-y-0 left-0 w-full max-w-[350px] bg-card z-[70] shadow-2xl transition-transform duration-500 ease-in-out border-r-2 border-border text-primary ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <aside 
+                className={`fixed inset-y-0 left-0 w-full max-w-[350px] bg-card z-[70] shadow-2xl transition-all duration-500 ease-in-out border-r-2 border-border text-primary ${
+                    isOpen ? 'translate-x-0 opacity-100 pointer-events-auto visible' : '-translate-x-full opacity-0 pointer-events-none invisible'
+                }`}
+                aria-hidden={!isOpen}
+            >
                 <div className="flex flex-col h-full uppercase tracking-widest font-black">
                     {/* Header */}
                     <div className="p-6 border-b-2 border-border flex justify-between items-center bg-paper">
