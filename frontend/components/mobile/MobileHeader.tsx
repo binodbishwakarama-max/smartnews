@@ -1,15 +1,15 @@
 'use client';
 import Link from 'next/link';
-import { Menu, Search, Sparkles } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { UserButton, SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
 import ThemeToggle from '../ThemeToggle';
 
 interface MobileHeaderProps {
     onOpenMenu: () => void;
-    onOpenSearch: () => void;
+    onOpenSearch?: () => void;
 }
 
-export default function MobileHeader({ onOpenMenu, onOpenSearch }: MobileHeaderProps) {
+export default function MobileHeader({ onOpenMenu }: MobileHeaderProps) {
     return (
         <header className="md:hidden sticky top-0 z-40 bg-card/95 dark:bg-background/95 backdrop-blur-md border-b border-border/80 h-14 px-3 flex items-center justify-between select-none max-w-full overflow-hidden">
             {/* Left: Menu Drawer Trigger & Live Badge */}
@@ -38,16 +38,8 @@ export default function MobileHeader({ onOpenMenu, onOpenSearch }: MobileHeaderP
                 </span>
             </Link>
 
-            {/* Right: Search + Profile / Sign In + Theme Toggle */}
-            <div className="flex items-center gap-0.5 shrink-0">
-                <button
-                    onClick={onOpenSearch}
-                    className="w-9 h-9 flex items-center justify-center rounded-xl text-primary hover:bg-muted active:scale-95 transition-transform"
-                    aria-label="Open Search"
-                >
-                    <Search className="w-4 h-4" />
-                </button>
-
+            {/* Right: Profile / Sign In + Theme Toggle */}
+            <div className="flex items-center gap-1 shrink-0">
                 <SignedIn>
                     <div className="w-8 h-8 flex items-center justify-center">
                         <UserButton afterSignOutUrl="/" />
@@ -56,7 +48,7 @@ export default function MobileHeader({ onOpenMenu, onOpenSearch }: MobileHeaderP
 
                 <SignedOut>
                     <SignInButton mode="modal">
-                        <button className="h-7 px-2 bg-accent text-white font-black text-[9px] uppercase tracking-wider rounded-lg active:scale-95 shadow-sm">
+                        <button className="h-7 px-2.5 bg-accent text-white font-black text-[9px] uppercase tracking-wider rounded-lg active:scale-95 shadow-sm">
                             In
                         </button>
                     </SignInButton>
