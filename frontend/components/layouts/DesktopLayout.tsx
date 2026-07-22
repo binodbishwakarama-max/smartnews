@@ -4,9 +4,8 @@ import Header from '../Header';
 import ArticleFeed from '../ArticleFeed';
 import ForYouFeed from '../ForYouFeed';
 import TrendingSidebar from '../TrendingSidebar';
-import { NewsCard } from '../EditorialComponents';
+import { NYTHeadlineItem, NYTCenterStory } from '../EditorialComponents';
 import Link from 'next/link';
-import { Activity } from 'lucide-react';
 
 interface DesktopLayoutProps {
     articles: Article[];
@@ -15,89 +14,143 @@ interface DesktopLayoutProps {
 }
 
 export default function DesktopLayout({ articles, trending, category }: DesktopLayoutProps) {
+    // Slice articles into columns for the NYT tri-column layout
+    const leftColumnArticles = articles.slice(0, 5);
+    const centerLead = articles[5] || articles[0];
+    const centerSecondary = articles.slice(6, 9);
+    const rightColumnArticles = articles.slice(9, 14);
+
     return (
-        <div className="min-h-screen bg-background text-primary selection:bg-accent selection:text-white">
+        <div className="min-h-screen bg-white dark:bg-[#121212] text-neutral-900 dark:text-neutral-100 selection:bg-red-700 selection:text-white">
             <Header />
 
-            {/* Prestige Master Layout Container (BBC / Widescreen Standard max-w-screen-2xl) */}
-            <main className="max-w-screen-2xl mx-auto px-6 lg:px-10 py-10">
+            <main className="max-w-[1200px] mx-auto px-5">
+                {/* Category Section Header */}
                 {category && category !== 'For You' && (
-                    <div className="mb-10 border-b-4 border-primary pb-4 flex justify-between items-end">
-                        <h2 className="text-5xl font-serif font-black tracking-tighter uppercase text-primary">{category}</h2>
-                        <span className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-secondary">Verified Stories</span>
+                    <div className="pt-6 pb-4 border-b-2 border-neutral-900 dark:border-neutral-200 mb-0">
+                        <h2 className="text-3xl font-serif font-black tracking-tight text-neutral-900 dark:text-neutral-100">{category}</h2>
                     </div>
                 )}
 
-                {/* Balanced 2-Column Editorial Layout */}
-                <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 items-start">
-                    
-                    {/* LEFT / MAIN COLUMN: Primary Story Stream (Flex-1 / 72% Width) */}
-                    <div className="flex-1 min-w-0 border-r border-border/80 lg:pr-10 space-y-8">
+                {/* NYTimes Tri-Column Layout (Homepage only, no category filter) */}
+                {!category ? (
+                    <div className="grid grid-cols-12 gap-0 pt-6">
+                        
+                        {/* LEFT COLUMN — Compact headline list (3 cols) */}
+                        <div className="col-span-3 border-r border-neutral-200 dark:border-neutral-800 pr-5">
+                            <div className="mb-3 pb-2 border-b border-neutral-300 dark:border-neutral-700">
+                                <span className="text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-neutral-400 dark:text-neutral-500">Top Stories</span>
+                            </div>
+                            {leftColumnArticles.map((art) => (
+                                <NYTHeadlineItem key={art.id} article={art} />
+                            ))}
+                        </div>
+
+                        {/* CENTER COLUMN — Lead + secondary stories (6 cols) */}
+                        <div className="col-span-6 px-6">
+                            {centerLead && (
+                                <NYTCenterStory article={centerLead} isLead />
+                            )}
+                            {centerSecondary.map((art) => (
+                                <NYTCenterStory key={art.id} article={art} />
+                            ))}
+                        </div>
+
+                        {/* RIGHT COLUMN — Trending + Opinion (3 cols) */}
+                        <div className="col-span-3 border-l border-neutral-200 dark:border-neutral-800 pl-5">
+                            {/* Trending Topics */}
+                            <div className="mb-3 pb-2 border-b border-neutral-300 dark:border-neutral-700">
+                                <span className="text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-neutral-400 dark:text-neutral-500">Trending</span>
+                            </div>
+                            <TrendingSidebar topics={trending} />
+
+                            {/* Opinion / Editor Picks */}
+                            <div className="mt-8 mb-3 pb-2 border-b border-neutral-300 dark:border-neutral-700">
+                                <span className="text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-neutral-400 dark:text-neutral-500">More Headlines</span>
+                            </div>
+                            {rightColumnArticles.map((art) => (
+                                <NYTHeadlineItem key={art.id} article={art} />
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    /* Category / For You view — uses existing ArticleFeed */
+                    <div className="pt-6">
                         {category === 'For You' ? (
                             <ForYouFeed />
                         ) : (
                             <ArticleFeed
                                 initialArticles={articles}
                                 category={category}
-                                showHero={!category}
+                                showHero={false}
                             />
                         )}
                     </div>
+                )}
 
-                    {/* RIGHT COLUMN: Trending Topics & Leaderboard Shorts (360px Sticky Sidebar) */}
-                    <aside className="lg:w-96 shrink-0 space-y-10 sticky top-32">
-                        {/* 1. Real-Time Trending Topics Cloud */}
-                        <TrendingSidebar topics={trending} />
-
-                        {/* 2. Editor's Choice Leaderboard */}
-                        <section className="p-6 rounded-2xl bg-card border border-border shadow-sm">
-                            <h3 className="text-xs font-mono font-black uppercase tracking-[0.25em] mb-4 text-secondary border-b border-border pb-3 flex items-center justify-between">
-                                <span>Editor's Picks</span>
-                                <Activity className="w-4 h-4 text-accent" />
-                            </h3>
-                            <div className="flex flex-col divide-y divide-border">
-                                {articles.slice(10, 15).map((art, idx) => (
-                                    <div key={art.id || idx} className="py-3 group">
-                                        <NewsCard article={art} horizontal />
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    </aside>
-
-                </div>
+                {/* Below-the-fold: Remaining articles in grid (homepage only) */}
+                {!category && articles.length > 14 && (
+                    <div className="mt-10 pt-8 border-t-2 border-neutral-900 dark:border-neutral-200">
+                        <div className="mb-6">
+                            <span className="text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-neutral-400 dark:text-neutral-500">More News</span>
+                        </div>
+                        <ArticleFeed
+                            initialArticles={articles.slice(14)}
+                            showHero={false}
+                        />
+                    </div>
+                )}
             </main>
 
-            {/* Prestige Editorial Footer */}
-            <footer className="mt-32 border-t-2 border-primary bg-card py-16">
-                <div className="max-w-screen-2xl mx-auto px-6 lg:px-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-                    <div className="col-span-1 lg:col-span-2">
-                        <h2 className="text-4xl font-serif font-black tracking-tighter uppercase mb-4">
-                            The Smart News<span className="text-accent">.</span>
-                        </h2>
-                        <p className="text-secondary text-sm leading-relaxed max-w-md">
-                            Independent journalism powered by artificial intelligence. Worldwide coverage delivered with editorial precision.
-                        </p>
+            {/* NYTimes-Style Footer */}
+            <footer className="mt-20 border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#121212]">
+                <div className="max-w-[1200px] mx-auto px-5 py-10">
+                    {/* Nameplate */}
+                    <div className="border-b border-neutral-200 dark:border-neutral-800 pb-6 mb-8">
+                        <Link href="/">
+                            <h2 className="text-2xl font-serif font-black tracking-tight text-neutral-900 dark:text-neutral-100">
+                                The Smart News
+                            </h2>
+                        </Link>
                     </div>
-                    <div>
-                        <h4 className="text-xs font-mono font-black uppercase tracking-widest mb-6 border-b border-border pb-2">
-                            Quick Links
-                        </h4>
-                        <nav className="flex flex-col gap-3 text-sm font-medium">
-                            <Link href="/" className="hover:text-accent transition-colors">Global Feed</Link>
-                            <Link href="/saved" className="hover:text-accent transition-colors">Saved Articles</Link>
-                            <Link href="/admin" className="hover:text-accent transition-colors">Admin Command</Link>
-                        </nav>
-                    </div>
-                    <div>
-                        <h4 className="text-xs font-mono font-black uppercase tracking-widest mb-6 border-b border-border pb-2">
-                            Engine
-                        </h4>
-                        <div className="space-y-2 text-xs font-mono text-secondary">
-                            <p>Version: 2.1 Production</p>
-                            <p>Ingestion: 800+ Articles</p>
-                            <p>Infrastructure: Vercel + Render</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-[13px] font-sans">
+                        <div>
+                            <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 dark:text-neutral-500 mb-4">News</h4>
+                            <nav className="flex flex-col gap-2 text-neutral-600 dark:text-neutral-400">
+                                <Link href="/" className="hover:text-black dark:hover:text-white transition-colors">Home</Link>
+                                <Link href="/?category=World" className="hover:text-black dark:hover:text-white transition-colors">World</Link>
+                                <Link href="/?category=Politics" className="hover:text-black dark:hover:text-white transition-colors">Politics</Link>
+                                <Link href="/?category=Business" className="hover:text-black dark:hover:text-white transition-colors">Business</Link>
+                            </nav>
                         </div>
+                        <div>
+                            <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 dark:text-neutral-500 mb-4">Discover</h4>
+                            <nav className="flex flex-col gap-2 text-neutral-600 dark:text-neutral-400">
+                                <Link href="/?category=Technology" className="hover:text-black dark:hover:text-white transition-colors">Technology</Link>
+                                <Link href="/?category=Science" className="hover:text-black dark:hover:text-white transition-colors">Science</Link>
+                                <Link href="/?category=Health" className="hover:text-black dark:hover:text-white transition-colors">Health</Link>
+                                <Link href="/?category=Culture" className="hover:text-black dark:hover:text-white transition-colors">Culture</Link>
+                            </nav>
+                        </div>
+                        <div>
+                            <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 dark:text-neutral-500 mb-4">Account</h4>
+                            <nav className="flex flex-col gap-2 text-neutral-600 dark:text-neutral-400">
+                                <Link href="/saved" className="hover:text-black dark:hover:text-white transition-colors">Saved Articles</Link>
+                                <Link href="/admin" className="hover:text-black dark:hover:text-white transition-colors">Admin</Link>
+                            </nav>
+                        </div>
+                        <div>
+                            <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 dark:text-neutral-500 mb-4">About</h4>
+                            <div className="text-neutral-500 dark:text-neutral-500 space-y-1.5 text-[12px]">
+                                <p>Independent AI-powered journalism.</p>
+                                <p>v2.2 · Vercel + Render</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-10 pt-6 border-t border-neutral-200 dark:border-neutral-800 text-[11px] text-neutral-400 dark:text-neutral-600 text-center">
+                        © {new Date().getFullYear()} The Smart News. All Rights Reserved.
                     </div>
                 </div>
             </footer>

@@ -13,6 +13,84 @@ function isJustIn(publishDate: string): boolean {
     return new Date(publishDate).getTime() > twoHoursAgo;
 }
 
+// ─── NYTimes Compact Headline Item (Left/Right Columns) ──────────────────────
+export function NYTHeadlineItem({ article }: { article: Article }) {
+    const { openReader } = useReader();
+    const { recordRead } = useReadingHistory();
+
+    const handleOpen = () => {
+        recordRead(article.id, article.category);
+        openReader(article.id);
+    };
+
+    return (
+        <div 
+            onClick={handleOpen}
+            className="py-3.5 cursor-pointer group border-b border-neutral-200 dark:border-neutral-800 last:border-b-0"
+        >
+            <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-red-700 dark:text-red-500">
+                {article.category || 'News'}
+            </span>
+            <h3 className="text-[15px] font-serif font-bold leading-snug mt-1 text-neutral-900 dark:text-neutral-100 group-hover:text-neutral-500 dark:group-hover:text-neutral-400 transition-colors">
+                {article.title}
+            </h3>
+            <p className="text-[12px] font-sans text-neutral-500 dark:text-neutral-500 mt-1.5 leading-relaxed line-clamp-2">
+                {article.summary || (article.content && article.content.substring(0, 120) + '...')}
+            </p>
+            <span className="text-[10px] font-sans text-neutral-400 dark:text-neutral-600 mt-1.5 block">
+                {formatTime(article.publish_date)}
+            </span>
+        </div>
+    );
+}
+
+// ─── NYTimes Center Column Story (with image) ────────────────────────────────
+export function NYTCenterStory({ article, isLead = false }: { article: Article; isLead?: boolean }) {
+    const { openReader } = useReader();
+    const { recordRead } = useReadingHistory();
+    const readTime = estimateReadTime(article.content || '');
+
+    const handleOpen = () => {
+        recordRead(article.id, article.category);
+        openReader(article.id);
+    };
+
+    return (
+        <div 
+            onClick={handleOpen}
+            className={`cursor-pointer group ${isLead ? 'pb-6 border-b border-neutral-200 dark:border-neutral-800 mb-6' : 'py-5 border-b border-neutral-200 dark:border-neutral-800'}`}
+        >
+            {article.image_url && (
+                <div className={`${isLead ? 'aspect-[16/9]' : 'aspect-[2/1]'} w-full bg-neutral-100 dark:bg-neutral-900 overflow-hidden mb-3`}>
+                    <img 
+                        src={article.image_url} 
+                        alt={article.title} 
+                        loading={isLead ? 'eager' : 'lazy'}
+                        className="w-full h-full object-cover group-hover:opacity-90 transition-opacity duration-300" 
+                    />
+                </div>
+            )}
+            <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-red-700 dark:text-red-500">
+                {article.category || 'News'}
+            </span>
+            <h2 className={`font-serif font-black leading-tight mt-1.5 text-neutral-900 dark:text-neutral-100 group-hover:text-neutral-500 dark:group-hover:text-neutral-400 transition-colors ${isLead ? 'text-2xl lg:text-3xl' : 'text-lg lg:text-xl'}`}>
+                {article.title}
+            </h2>
+            <p className={`font-sans text-neutral-600 dark:text-neutral-400 mt-2 leading-relaxed ${isLead ? 'text-[15px] line-clamp-4' : 'text-[13px] line-clamp-2'}`}>
+                {article.summary || article.content}
+            </p>
+            <div className="flex items-center gap-2 mt-2.5 text-[10px] font-sans text-neutral-400 dark:text-neutral-500">
+                <span className="font-semibold uppercase">{article.source}</span>
+                <span>·</span>
+                <span>{formatTime(article.publish_date)}</span>
+                <span>·</span>
+                <span>{readTime} min read</span>
+            </div>
+        </div>
+    );
+}
+
+
 export function SkeletonNewsCard() {
     return (
         <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm animate-pulse flex flex-col p-4 gap-4">
