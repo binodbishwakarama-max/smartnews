@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { NewsCard, LeadStory } from './EditorialComponents';
+import { NewsCard, LeadStory, BBCTopHeroGrid } from './EditorialComponents';
 import dynamic from 'next/dynamic';
 
 const RecommendationRail = dynamic(() => import('./RecommendationRail'), { ssr: false });
@@ -477,14 +477,11 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
                 </div>
             )}
 
-            {heroArticle && (
-                <div className={`mb-12 ${justInsertedIds.has(heroArticle.id) ? 'animate-live-flash' : ''}`}>
-                    <LeadStory 
-                        article={heroArticle} 
-                        isSelected={selectedIndex === 0}
-                        indexRef={cardRefs.current[0]}
-                    />
-                </div>
+            {showHero && heroArticle && (
+                <BBCTopHeroGrid 
+                    leadArticle={heroArticle} 
+                    sideArticles={articles.slice(1, 4)}
+                />
             )}
 
             {/* First Block of Grid Articles */}

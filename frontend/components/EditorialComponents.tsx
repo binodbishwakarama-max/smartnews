@@ -194,6 +194,114 @@ export function NewsCard({
 }
 
 // ─── BBC Style Lead Story Component ───────────────────────────────────────────
+// ─── BBC Top Hero Grid Component (Lead Story + 3 Side Cards) ────────────────
+export function BBCTopHeroGrid({ 
+    leadArticle, 
+    sideArticles = [] 
+}: { 
+    leadArticle: Article; 
+    sideArticles?: Article[]; 
+}) {
+    const { openReader } = useReader();
+    const { recordRead } = useReadingHistory();
+
+    const handleOpen = (article: Article) => {
+        recordRead(article.id, article.category);
+        openReader(article.id);
+    };
+
+    if (!leadArticle) return null;
+
+    const readTime = estimateReadTime(leadArticle.content || '');
+
+    return (
+        <section className="mb-12 border-b border-border/80 pb-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+                {/* Main Hero Card (7 Columns) */}
+                <div 
+                    onClick={() => handleOpen(leadArticle)}
+                    className="lg:col-span-7 group bg-card border border-border/80 hover:border-accent/80 rounded-3xl p-6 flex flex-col justify-between shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer"
+                >
+                    <div>
+                        <div className="aspect-[16/9] bg-muted relative rounded-2xl overflow-hidden mb-6">
+                            <img 
+                                src={leadArticle.image_url || '/placeholder.jpg'} 
+                                alt={leadArticle.title} 
+                                loading="eager" 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
+                            />
+                            <div className="absolute top-4 left-4 z-10">
+                                <span className="bg-accent text-white text-xs font-mono font-black px-3 py-1.5 rounded-xl shadow-lg uppercase tracking-widest">
+                                    TOP COVERAGE // {leadArticle.category || 'WORLD'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <h2 className="text-2xl lg:text-3xl font-serif font-black leading-tight group-hover:text-accent transition-colors">
+                                {leadArticle.title}
+                            </h2>
+                            <p className="text-secondary text-sm leading-relaxed line-clamp-3 font-sans">
+                                {leadArticle.summary || leadArticle.content}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 mt-6 border-t border-border/60 text-xs font-mono text-secondary">
+                        <div className="flex items-center gap-2">
+                            <span className="font-black text-primary uppercase">{leadArticle.source}</span>
+                            <span>•</span>
+                            <span>{formatDate(leadArticle.publish_date)}</span>
+                        </div>
+                        <span className="flex items-center gap-1 font-bold text-accent">
+                            <Clock className="w-3.5 h-3.5" /> {readTime} min read
+                        </span>
+                    </div>
+                </div>
+
+                {/* 3 Side Hero Cards (5 Columns) */}
+                <div className="lg:col-span-5 flex flex-col justify-between gap-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                        <span className="text-xs font-mono font-black uppercase tracking-widest text-accent flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                            Top Stories
+                        </span>
+                        <span className="text-[10px] font-mono text-secondary uppercase font-bold">BBC Wire</span>
+                    </div>
+
+                    {sideArticles.slice(0, 3).map((art, idx) => (
+                        <div 
+                            key={art.id || idx}
+                            onClick={() => handleOpen(art)}
+                            className="group flex gap-4 items-center p-4 rounded-2xl bg-card border border-border/60 hover:border-accent/60 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+                        >
+                            <div className="w-24 h-24 shrink-0 rounded-xl bg-muted overflow-hidden relative">
+                                <img 
+                                    src={art.image_url || '/placeholder.jpg'} 
+                                    alt={art.title} 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                                <span className="text-[10px] font-mono font-black uppercase text-accent">
+                                    {art.category || 'News'}
+                                </span>
+                                <h3 className="text-sm font-serif font-bold leading-snug group-hover:text-accent transition-colors line-clamp-2">
+                                    {art.title}
+                                </h3>
+                                <span className="text-[10px] font-mono text-secondary uppercase font-bold">
+                                    {art.source} • {formatTime(art.publish_date)}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+}
+
 export function LeadStory({ 
     article,
     isSelected = false,
