@@ -53,7 +53,7 @@ export default function Header() {
     return (
         <>
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-            <header className="hidden lg:block bg-card/90 dark:bg-background/90 backdrop-blur-xl border-b border-border sticky top-0 z-50 transition-all duration-300">
+            <header className="hidden md:block bg-card/90 dark:bg-background/90 backdrop-blur-xl border-b border-border sticky top-0 z-50 transition-all duration-300">
 
             {/* Utility Bar - Responsive on Mobile & Desktop */}
             <div className="flex max-w-7xl mx-auto px-4 sm:px-6 py-2 justify-between items-center text-[10px] uppercase font-bold tracking-widest border-b border-border overflow-x-auto no-scrollbar gap-3">

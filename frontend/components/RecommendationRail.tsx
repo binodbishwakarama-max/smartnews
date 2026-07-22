@@ -56,7 +56,7 @@ export default function RecommendationRail({ currentCategory, excludeIds = [] }:
 
     return (
         <section className="py-12 border-t-4 border-b-4 border-double border-brand dark:border-border bg-paper dark:bg-muted/10 my-16 overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6">
+            <div className="w-full">
                 <div className="flex items-end justify-between mb-8">
                     <div>
                         <span className="flex items-center gap-1.5 text-xs font-mono font-black uppercase tracking-[0.25em] text-accent mb-2">

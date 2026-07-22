@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { useViewport } from '../../hooks/useViewport';
 import type { Article } from '../../app/page';
 import MobileLayout from './MobileLayout';
-import TabletLayout from './TabletLayout';
 import DesktopLayout from './DesktopLayout';
 import { useRouter } from 'next/navigation';
 
@@ -45,8 +44,9 @@ export default function DeviceRouter({ articles, trending, category }: DeviceRou
         router.push(url);
     };
 
-    // SSR & Pre-Hydration Protection: Use CSS breakpoint containers during initial render.
-    // This prevents Next.js SSR hydration mismatches that cause double-rendering or DOM text collisions.
+    // SSR & Pre-Hydration Protection:
+    // Mobile (<768px): MobileLayout
+    // Desktop/Tablet (>=768px): DesktopLayout with full masthead, live stats, search & categories
     if (!isHydrated) {
         return (
             <>
@@ -57,13 +57,7 @@ export default function DeviceRouter({ articles, trending, category }: DeviceRou
                         onSelectCategory={handleSelectCategory}
                     />
                 </div>
-                <div className="hidden md:block lg:hidden">
-                    <TabletLayout
-                        articles={articles}
-                        category={category}
-                    />
-                </div>
-                <div className="hidden lg:block">
+                <div className="hidden md:block">
                     <DesktopLayout
                         articles={articles}
                         trending={trending}
@@ -84,16 +78,7 @@ export default function DeviceRouter({ articles, trending, category }: DeviceRou
         );
     }
 
-    if (device === 'tablet') {
-        return (
-            <TabletLayout
-                articles={articles}
-                category={category}
-            />
-        );
-    }
-
-    // Desktop Tier (1024px+)
+    // Tablet & Desktop Tier (768px+) -> Master Edition Layout
     return (
         <DesktopLayout
             articles={articles}
