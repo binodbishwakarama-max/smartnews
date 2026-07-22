@@ -12,28 +12,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Simple AI Mock for now until we integrate sentence-transformers
-def ai_classify(text):
-    """Categorize articles into frontend-supported buckets using keyword mapping."""
-    text = text.lower()
-    
-    # Mapping of categories to related keywords
-    categories = {
-        'Technology': ['tech', 'ai', 'software', 'hardware', 'google', 'apple', 'meta', 'silicon', 'cyber', 'gadget', 'crypto', 'iphone', 'android', 'nvidia'],
-        'Business': ['market', 'stock', 'economy', 'ceo', 'company', 'startup', 'finance', 'inflation', 'trade', 'bank', 'earnings', 'revenue', 'wall street'],
-        'Health': ['covid', 'medicine', 'doctor', 'virus', 'health', 'fitness', 'vaccine', 'hospital', 'cancer', 'diet', 'medical', 'brain', 'mental'],
-        'Science': ['nasa', 'space', 'research', 'scientists', 'biology', 'physics', 'astronomy', 'planet', 'earth', 'climate', 'quantum', 'nature', 'discovery'],
-        'Politics': ['election', 'president', 'government', 'senate', 'biden', 'trump', 'policy', 'parliament', 'vote', 'law', 'congress', 'white house', 'democrat', 'republican'],
-        'Culture': ['art', 'movie', 'film', 'music', 'book', 'fashion', 'entertainment', 'celebrity', 'theatre', 'style', 'netflix', 'oscar', 'hollywood'],
-        'World': ['war', 'conflict', 'un ', 'international', 'global', 'ukraine', 'russia', 'china', 'israel', 'border', 'foreign', 'middle east', 'europe', 'asia']
-    }
-    
-    # Check for matches
-    for category, keywords in categories.items():
-        if any(kw in text for kw in keywords):
-            return category
-            
-    return 'General'
+from app.services.categorizer import smart_categorize
 
 def process_and_save_article(scraper, link):
     """Worker function to process a single article"""
@@ -61,8 +40,8 @@ def process_and_save_article(scraper, link):
         # --- 3. Image Processing (Fast Check) ---
         valid_image = image_processor.process_image(data['image_url'])
 
-        # --- 4. Classify ---
-        category = ai_classify(data['title'] + " " + data['content'])
+        # --- 4. High-Precision NLP Classification ---
+        category = smart_categorize(data['title'], data['content'], data['url'])
         
         article = Article(
             title=data['title'],
