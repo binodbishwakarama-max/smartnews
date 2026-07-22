@@ -189,7 +189,14 @@ export default function MobileReaderSheet({ articleId, onClose }: MobileReaderSh
                 {/* 2. Audio Voice Player Toolbar */}
                 <div className="px-4 py-2 bg-accent/10 border-b border-accent/20 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2">
-                        <Volume2 className="w-4 h-4 text-accent animate-pulse" />
+                        <Volume2 className="w-4 h-4 text-accent" />
+                        {isPlaying && (
+                            <div className="flex items-end gap-0.5 h-3">
+                                <span className="w-0.5 h-3 bg-accent animate-bounce rounded-full" />
+                                <span className="w-0.5 h-2 bg-accent animate-bounce rounded-full [animation-delay:0.15s]" />
+                                <span className="w-0.5 h-3.5 bg-accent animate-bounce rounded-full [animation-delay:0.3s]" />
+                            </div>
+                        )}
                         <span className="text-[10px] font-mono font-black uppercase tracking-wider text-accent">
                             {isPlaying ? 'AI Reading Story...' : isPaused ? 'Audio Paused' : 'Listen Story'}
                         </span>
