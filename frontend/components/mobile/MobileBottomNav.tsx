@@ -19,7 +19,7 @@ export default function MobileBottomNav({ onOpenMenu, onOpenSearch, onOpenPulse 
 
     return (
         <nav 
-            className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 dark:bg-background/95 backdrop-blur-xl border-t border-border/80 h-16 px-2 flex items-center justify-around select-none shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]"
+            className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 dark:bg-background/95 backdrop-blur-xl border-t border-border/80 h-16 px-2 flex items-center justify-around select-none shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]"
             aria-label="Mobile Navigation Bar"
         >
             {/* 1. Feed Item */}

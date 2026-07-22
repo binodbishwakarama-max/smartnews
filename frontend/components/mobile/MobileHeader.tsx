@@ -11,7 +11,7 @@ interface MobileHeaderProps {
 
 export default function MobileHeader({ onOpenMenu, onOpenSearch }: MobileHeaderProps) {
     return (
-        <header className="sticky top-0 z-40 bg-card/95 dark:bg-background/95 backdrop-blur-md border-b border-border/80 h-14 px-4 flex items-center justify-between select-none">
+        <header className="md:hidden sticky top-0 z-40 bg-card/95 dark:bg-background/95 backdrop-blur-md border-b border-border/80 h-14 px-4 flex items-center justify-between select-none">
             {/* Left: Menu Drawer Trigger (Min 44x44px target) */}
             <div className="flex items-center gap-2">
                 <button

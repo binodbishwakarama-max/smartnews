@@ -15,7 +15,7 @@ export default function MobileCategoryBar({ onSelectCategory }: MobileCategoryBa
     const currentCategory = searchParams.get('category') || 'Latest';
 
     return (
-        <div className="bg-card/90 dark:bg-background/90 border-b border-border/80 py-2 select-none sticky top-14 z-30 backdrop-blur-md">
+        <div className="md:hidden bg-card/90 dark:bg-background/90 border-b border-border/80 py-2 select-none sticky top-14 z-30 backdrop-blur-md">
             <div className="flex gap-2 overflow-x-auto no-scrollbar snap-x snap-mandatory px-4 touch-pan-x">
                 {CATEGORIES.map(cat => {
                     const isActive = currentCategory === cat || (cat === 'Latest' && currentCategory === 'Latest');

@@ -19,7 +19,7 @@ export default function TabletHeader({ onOpenMenu }: TabletHeaderProps) {
     const currentCategory = searchParams.get('category') || 'Latest';
 
     return (
-        <header className="bg-card/90 dark:bg-background/90 backdrop-blur-md border-b border-border sticky top-0 z-40 select-none">
+        <header className="hidden md:block lg:hidden bg-card/90 dark:bg-background/90 backdrop-blur-md border-b border-border sticky top-0 z-40 select-none">
             {/* Top Bar */}
             <div className="px-6 py-2 border-b border-border flex justify-between items-center text-xs font-mono font-bold uppercase tracking-wider">
                 <div className="flex items-center gap-3">
