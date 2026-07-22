@@ -37,11 +37,20 @@ export default function MobileReaderSheet({ articleId, onClose }: MobileReaderSh
     const [fontSize, setFontSize] = useState<number>(18);
     const [theme, setTheme] = useState<'light' | 'sepia' | 'dark' | 'slate'>('dark');
     const [showSettings, setShowSettings] = useState(false);
+    const [scrollProgress, setScrollProgress] = useState(0);
     const [copied, setCopied] = useState(false);
 
     const { isBookmarked, addBookmark, removeBookmark } = useBookmarks();
     const synthRef = useRef<SpeechSynthesis | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+        if (scrollHeight > clientHeight) {
+            const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
+            setScrollProgress(Math.min(100, Math.max(0, progress)));
+        }
+    };
 
     // Initialize Speech Synthesis
     useEffect(() => {
@@ -251,6 +260,14 @@ export default function MobileReaderSheet({ articleId, onClose }: MobileReaderSh
             {/* Bottom Sheet Container */}
             <div className={`relative w-full max-h-[92vh] min-h-[65vh] ${themeBg} rounded-t-3xl border-t-2 border-accent shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300`}>
                 
+                {/* BBC Red Reading Progress Bar */}
+                <div className="w-full h-1 bg-black/10 dark:bg-white/10 shrink-0">
+                    <div 
+                        className="h-full bg-accent transition-all duration-150 ease-out" 
+                        style={{ width: `${scrollProgress}%` }} 
+                    />
+                </div>
+
                 {/* 1. Header Drag Handle & Top Controls Bar */}
                 <div className="px-4 py-2.5 flex items-center justify-between border-b border-black/10 dark:border-white/10 shrink-0">
                     <div className="w-10" />
@@ -392,7 +409,7 @@ export default function MobileReaderSheet({ articleId, onClose }: MobileReaderSh
                 )}
 
                 {/* 4. Article Scrollable Content */}
-                <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
+                <div onScroll={handleScroll} className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
                     {/* Category & Source Badges */}
                     <div className="flex items-center gap-2 mb-3">
                         <span className="px-2.5 py-0.5 rounded-full bg-accent/20 text-accent font-mono font-black text-[10px] uppercase tracking-wider">

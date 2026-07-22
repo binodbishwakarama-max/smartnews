@@ -13,6 +13,24 @@ function isJustIn(publishDate: string): boolean {
     return new Date(publishDate).getTime() > twoHoursAgo;
 }
 
+export function SkeletonNewsCard() {
+    return (
+        <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm animate-pulse flex flex-col p-4 gap-4">
+            <div className="aspect-[16/9] w-full bg-muted rounded-xl" />
+            <div className="space-y-2">
+                <div className="w-16 h-3 bg-accent/20 rounded-md" />
+                <div className="w-full h-5 bg-muted rounded-md" />
+                <div className="w-3/4 h-5 bg-muted rounded-md" />
+                <div className="w-full h-3 bg-muted/60 rounded-md mt-2" />
+            </div>
+            <div className="pt-3 border-t border-border/40 flex justify-between">
+                <div className="w-20 h-3 bg-muted rounded-md" />
+                <div className="w-12 h-3 bg-muted rounded-md" />
+            </div>
+        </div>
+    );
+}
+
 function estimateReadTime(content: string): number {
     const words = content?.split(/\s+/).length || 0;
     return Math.max(1, Math.round(words / 238));

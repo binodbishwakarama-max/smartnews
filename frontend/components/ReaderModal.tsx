@@ -36,6 +36,7 @@ export default function ReaderModal({ articleId, onClose }: ReaderModalProps) {
   const [currentSentenceIdx, setCurrentSentenceIdx] = useState<number>(-1);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const fallbackAudioRef = useRef<HTMLAudioElement | null>(null);
   const fallbackSentencesIdxRef = useRef<number>(0);
 

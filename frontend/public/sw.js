@@ -1,10 +1,9 @@
-// Service Worker for PWA (Network-First Strategy)
-const CACHE_NAME = "smartnews-v2";
+// Service Worker for PWA (Stale-While-Revalidate & Offline Article Caching)
+const CACHE_NAME = "smartnews-v3";
 const urlsToCache = [
   "/",
+  "/saved",
   "/manifest.json",
-  "/icon-192x192.png",
-  "/icon-512x512.png",
 ];
 
 // Install event
@@ -12,7 +11,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(urlsToCache);
-    }),
+    })
   );
   self.skipWaiting();
 });
@@ -26,27 +25,57 @@ self.addEventListener("activate", (event) => {
           if (cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
-        }),
+        })
       );
-    }),
+    })
   );
   self.clients.claim();
 });
 
-// Fetch event (Network-First with Cache Fallback for document routes)
+// Fetch event (Network-First with Cache Fallback for Article API & Pages)
 self.addEventListener("fetch", (event) => {
-  // Only handle GET requests and skip external APIs/Clerk auth
   if (event.request.method !== "GET") return;
-  
+
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith("/api") || url.pathname.includes("clerk") || url.hostname !== self.location.hostname) {
+
+  // Skip Clerk Auth & External non-API URLs
+  if (url.pathname.includes("clerk") || (url.hostname !== self.location.hostname && !url.hostname.includes("onrender.com"))) {
     return;
   }
 
+  // Article API Request Caching Strategy: Network-First with Fallback to Cache
+  if (url.pathname.includes("/api/v1/articles")) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Serve cached article JSON when offline
+          return caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            return new Response(JSON.stringify({ error: "Offline mode. Showing cached data." }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" }
+            });
+          });
+        })
+    );
+    return;
+  }
+
+  // HTML Page Navigation Strategy: Network-First with Cache Fallback
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // If valid response, clone and cache it
         if (response && response.status === 200 && response.type === "basic") {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -56,17 +85,11 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() => {
-        // Offline fallback
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // Return offline page or generic error if not in cache
-          return new Response("Offline connection error.", {
-            status: 503,
-            statusText: "Service Unavailable",
-            headers: new Headers({ "Content-Type": "text/plain" }),
-          });
+          return caches.match("/");
         });
       })
   );

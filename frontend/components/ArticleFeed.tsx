@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { NewsCard, LeadStory, BBCTopHeroGrid } from './EditorialComponents';
+import { NewsCard, LeadStory, BBCTopHeroGrid, SkeletonNewsCard } from './EditorialComponents';
 import dynamic from 'next/dynamic';
 
 const RecommendationRail = dynamic(() => import('./RecommendationRail'), { ssr: false });
