@@ -56,7 +56,7 @@ export default function Header() {
             <header className="hidden lg:block bg-card/90 dark:bg-background/90 backdrop-blur-xl border-b border-border sticky top-0 z-50 transition-all duration-300">
 
             {/* Utility Bar - Responsive on Mobile & Desktop */}
-            <div className="flex max-w-[1536px] mx-auto px-4 sm:px-8 py-2 justify-between items-center text-[10px] uppercase font-bold tracking-widest border-b border-border overflow-x-auto no-scrollbar gap-3">
+            <div className="flex max-w-7xl mx-auto px-4 sm:px-6 py-2 justify-between items-center text-[10px] uppercase font-bold tracking-widest border-b border-border overflow-x-auto no-scrollbar gap-3">
                 <div className="flex gap-2 sm:gap-4 items-center shrink-0">
                     <span className="flex items-center gap-1 text-accent font-black"><Clock className="w-3 h-3 animate-pulse" /> LIVE</span>
                     {currentDate && <span className="text-secondary font-mono text-[9px] sm:text-[10px]">{currentDate}</span>}
@@ -108,7 +108,7 @@ export default function Header() {
             </div>
 
             {/* Main Branding */}
-            <div className="max-w-[1536px] mx-auto px-4 sm:px-8 py-4 sm:py-6 flex flex-col items-center gap-2 sm:gap-4">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex flex-col items-center gap-2 sm:gap-4">
                 <Link href="/">
                     <h1 className="text-3xl sm:text-5xl md:text-7xl font-serif font-black tracking-tighter text-center uppercase">
                         The Smart News<span className="text-accent">.</span>
@@ -121,7 +121,7 @@ export default function Header() {
 
             {/* Navigation */}
             <nav className="border-t-4 border-b-4 border-double border-brand dark:border-border py-2.5 bg-background">
-                <div className="max-w-[1536px] mx-auto px-8 flex items-center justify-between">
+                <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
                     <button
                         onClick={() => setIsSidebarOpen(true)}
                         className="p-2 -ml-2 hover:bg-brand hover:text-background dark:hover:bg-primary dark:hover:text-background transition-all transform active:scale-95 border border-transparent hover:border-brand rounded-none"
