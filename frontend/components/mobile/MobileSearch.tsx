@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Search, X, Loader2, ArrowRight } from 'lucide-react';
+import { Search, X, Loader2, Clock, TrendingUp, Sparkles, ChevronRight } from 'lucide-react';
 import { API_ENDPOINTS } from '../../lib/config';
 import type { Article } from '../../app/page';
 import { useReader } from '../../contexts/ReaderContext';
@@ -10,132 +10,226 @@ interface MobileSearchProps {
     onClose: () => void;
 }
 
+const POPULAR_SEARCHES = ['Climate', 'AI & Tech', 'Election', 'Markets', 'Sports', 'India'];
+
 export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<Article[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [recentSearches, setRecentSearches] = useState<string[]>([]);
     const inputRef = useRef<HTMLInputElement>(null);
     const { openReader } = useReader();
 
+    // Load recent search queries from localStorage
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('smartnews_recent_searches');
+            if (saved) {
+                try { setRecentSearches(JSON.parse(saved)); } catch {}
+            }
+        }
+    }, [isOpen]);
+
+    const saveSearchQuery = (q: string) => {
+        const trimmed = q.trim();
+        if (!trimmed) return;
+        const updated = [trimmed, ...recentSearches.filter(s => s.toLowerCase() !== trimmed.toLowerCase())].slice(0, 5);
+        setRecentSearches(updated);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('smartnews_recent_searches', JSON.stringify(updated));
+        }
+    };
+
+    // Auto-focus input on open
     useEffect(() => {
         if (isOpen) {
-            setTimeout(() => inputRef.current?.focus(), 100);
+            const timer = setTimeout(() => inputRef.current?.focus(), 80);
+            return () => clearTimeout(timer);
         } else {
             setQuery('');
             setResults([]);
         }
     }, [isOpen]);
 
+    // Google-style instant search debounced at 200ms
     useEffect(() => {
-        if (!query.trim()) {
+        const trimmed = query.trim();
+        if (!trimmed) {
             setResults([]);
+            setIsLoading(false);
             return;
         }
 
+        setIsLoading(true);
         const timer = setTimeout(async () => {
-            setIsLoading(true);
             try {
-                const res = await fetch(`${API_ENDPOINTS.ARTICLES}/search?q=${encodeURIComponent(query)}&limit=15`);
+                const searchUrl = `${API_ENDPOINTS.SEARCH}?q=${encodeURIComponent(trimmed)}&limit=15`;
+                const res = await fetch(searchUrl);
                 if (res.ok) {
                     const data = await res.json();
-                    setResults(Array.isArray(data) ? data : data.results || []);
+                    const items = Array.isArray(data) ? data : (data.results || data.articles || []);
+                    setResults(items);
+                } else {
+                    setResults([]);
                 }
             } catch (err) {
-                console.error('Mobile search error:', err);
+                console.error('[Search] Fetch error:', err);
+                setResults([]);
             } finally {
                 setIsLoading(false);
             }
-        }, 300);
+        }, 200);
 
         return () => clearTimeout(timer);
     }, [query]);
 
     if (!isOpen) return null;
 
+    const handleSelectResult = (article: Article) => {
+        saveSearchQuery(query);
+        onClose();
+        openReader(article.id);
+    };
+
+    const handleSelectChip = (chip: string) => {
+        setQuery(chip);
+        saveSearchQuery(chip);
+    };
+
+    const clearRecent = () => {
+        setRecentSearches([]);
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('smartnews_recent_searches');
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-50 bg-background flex flex-col select-none animate-in fade-in duration-200">
-            {/* Header Input Bar */}
-            <div className="h-16 px-4 border-b border-border flex items-center gap-3 bg-card dark:bg-paper shrink-0">
-                <Search className="w-5 h-5 text-secondary shrink-0" />
+            {/* 1. Google-Style Top Search Input Bar */}
+            <div className="h-16 px-4 border-b border-border flex items-center gap-3 bg-card dark:bg-slate-900 shrink-0 shadow-sm">
+                <Search className="w-5 h-5 text-accent shrink-0" />
                 <input
                     ref={inputRef}
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search global news, topics, authors..."
+                    placeholder="Search global news, topics, sources..."
                     className="flex-1 bg-transparent text-primary text-base font-medium placeholder:text-secondary focus:outline-none"
                 />
                 {query && (
                     <button
                         onClick={() => setQuery('')}
-                        className="w-10 h-10 flex items-center justify-center rounded-xl text-secondary hover:text-primary"
+                        className="w-9 h-9 flex items-center justify-center rounded-full text-secondary hover:text-primary active:bg-muted"
                         aria-label="Clear Search"
                     >
-                        <X className="w-4 h-4" />
+                        <X className="w-4.5 h-4.5" />
                     </button>
                 )}
                 <button
                     onClick={onClose}
-                    className="h-10 px-3 flex items-center justify-center font-mono text-xs font-black uppercase text-accent hover:underline"
+                    className="h-9 px-3 flex items-center justify-center font-mono text-xs font-black uppercase text-accent hover:underline rounded-lg"
                 >
                     Cancel
                 </button>
             </div>
 
-            {/* Results Scroll List */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+            {/* 2. Results & Suggestions Scroll View */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <div className="flex flex-col items-center justify-center py-20 gap-3">
                         <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                        <span className="text-xs font-mono font-bold uppercase tracking-widest text-secondary">Searching Newsroom...</span>
-                    </div>
-                ) : results.length > 0 ? (
-                    <div className="space-y-2">
-                        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-secondary border-b border-border pb-1 block">
-                            Found {results.length} Stories
+                        <span className="text-xs font-mono font-bold uppercase tracking-widest text-secondary">
+                            Searching 800+ Verified Stories...
                         </span>
-                        {results.map((art) => (
-                            <div
-                                key={art.id}
-                                onClick={() => {
-                                    openReader(art.id);
-                                    onClose();
-                                }}
-                                className="p-3 bg-card dark:bg-paper border border-border/80 rounded-xl hover:border-accent/40 active:bg-muted/40 transition-all flex items-center justify-between gap-3 cursor-pointer"
-                            >
-                                <div className="space-y-1 min-w-0 flex-1">
-                                    <div className="flex items-center gap-2 text-[9px] font-mono uppercase text-secondary">
-                                        <span className="font-bold text-accent">{art.source}</span>
-                                        <span>• {art.category}</span>
-                                    </div>
-                                    <h4 className="text-xs font-serif font-bold text-primary leading-snug line-clamp-2">
-                                        {art.title}
-                                    </h4>
-                                </div>
-                                <ArrowRight className="w-4 h-4 text-secondary shrink-0" />
+                    </div>
+                ) : query.trim().length > 0 ? (
+                    results.length > 0 ? (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between pb-2 border-b border-border">
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-secondary">
+                                    Found {results.length} Stories
+                                </span>
+                                <span className="text-[9px] font-mono text-accent">Tap to read full story</span>
                             </div>
-                        ))}
-                    </div>
-                ) : query.trim() ? (
-                    <div className="text-center py-16 space-y-2">
-                        <p className="text-sm font-serif font-bold text-primary">No stories found for "{query}"</p>
-                        <p className="text-xs text-secondary">Try searching for keywords like "climate", "AI", "politics", or "cricket".</p>
-                    </div>
-                ) : (
-                    <div className="py-8 space-y-4">
-                        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-secondary block">
-                            Popular Topics
-                        </span>
-                        <div className="flex flex-wrap gap-2">
-                            {['Artificial Intelligence', 'Global Markets', 'Cricket', 'Space Exploration', 'Climate Change', 'US Politics'].map((tag) => (
-                                <button
-                                    key={tag}
-                                    onClick={() => setQuery(tag)}
-                                    className="px-3 py-1.5 bg-muted rounded-full text-xs font-mono font-medium text-secondary hover:text-primary active:scale-95 transition-transform"
+
+                            {results.map((art) => (
+                                <div
+                                    key={art.id}
+                                    onClick={() => handleSelectResult(art)}
+                                    className="p-3.5 rounded-xl border border-border bg-card hover:border-accent active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3 group"
                                 >
-                                    {tag}
-                                </button>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-[9px] font-mono font-black uppercase tracking-wider text-accent bg-accent/10 px-2 py-0.5 rounded">
+                                                {art.category || 'News'}
+                                            </span>
+                                            <span className="text-[10px] font-mono font-bold text-secondary uppercase truncate">
+                                                {art.source}
+                                            </span>
+                                        </div>
+                                        <h3 className="font-serif text-sm font-bold leading-snug text-primary group-hover:text-accent line-clamp-2">
+                                            {art.title}
+                                        </h3>
+                                    </div>
+                                    <ChevronRight className="w-4 h-4 text-secondary group-hover:text-accent shrink-0" />
+                                </div>
                             ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 space-y-3">
+                            <Search className="w-12 h-12 text-secondary/30 mx-auto" />
+                            <p className="text-sm font-bold text-primary">No stories matching &quot;{query}&quot;</p>
+                            <p className="text-xs text-secondary">Try searching broader keywords like Climate, AI, or World</p>
+                        </div>
+                    )
+                ) : (
+                    /* Default Google-Style Suggestions View */
+                    <div className="space-y-6 pt-2">
+                        {/* Recent Searches */}
+                        {recentSearches.length > 0 && (
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-secondary flex items-center gap-1.5">
+                                        <Clock className="w-3.5 h-3.5" /> Recent Searches
+                                    </span>
+                                    <button
+                                        onClick={clearRecent}
+                                        className="text-[10px] font-mono text-secondary hover:text-accent"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {recentSearches.map((s, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => handleSelectChip(s)}
+                                            className="px-3.5 py-1.5 rounded-full bg-muted border border-border text-xs font-medium text-primary hover:border-accent active:scale-95 transition-all"
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Trending News Chips */}
+                        <div className="space-y-3">
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-secondary flex items-center gap-1.5">
+                                <TrendingUp className="w-3.5 h-3.5 text-accent" /> Trending Topics
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                                {POPULAR_SEARCHES.map((chip, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => handleSelectChip(chip)}
+                                        className="px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-xs font-bold text-accent hover:bg-accent hover:text-white active:scale-95 transition-all flex items-center gap-1.5"
+                                    >
+                                        <Sparkles className="w-3 h-3" />
+                                        {chip}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
