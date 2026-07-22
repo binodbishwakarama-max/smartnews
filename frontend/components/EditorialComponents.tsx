@@ -1,10 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { Article } from '../app/page';
 import { formatDate, formatTime } from '../lib/dateUtils';
 import BookmarkButton from './BookmarkButton';
-import { ShieldCheck, Layers, Award, Share2, Flame, Clock } from 'lucide-react';
+import { ShieldCheck, Layers, Share2, Flame, Clock } from 'lucide-react';
 import { useReader } from '../contexts/ReaderContext';
 import { useReadingHistory } from '../contexts/ReadingHistoryContext';
 
@@ -15,14 +14,11 @@ function isJustIn(publishDate: string): boolean {
 }
 
 function estimateReadTime(content: string): number {
-    // Average adult reads ~238 words/min
     const words = content?.split(/\s+/).length || 0;
     return Math.max(1, Math.round(words / 238));
 }
 
 function fakeReaderCount(id: number, viewCount?: number): number {
-    // Produce a believable seeded number based on article id
-    // Grows with recency-weighted seed so newer articles show low counts
     const base = viewCount ?? (((id * 137 + 42) % 800) + 50);
     return Math.max(12, base);
 }
@@ -34,12 +30,11 @@ async function shareArticle(article: Article) {
             await navigator.share(shareData);
         } else {
             await navigator.clipboard.writeText(article.url);
-            // Brief toast (no library)
             const toast = document.createElement('div');
-            toast.textContent = '🔗 Link copied!';
-            toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111;color:#fff;padding:10px 18px;font-size:12px;font-weight:700;letter-spacing:0.1em;z-index:9999;border-radius:2px;animation:fadeIn 0.2s ease';
+            toast.textContent = '🔗 Link copied to clipboard!';
+            toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:12px 20px;font-size:13px;font-weight:700;z-index:9999;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.2)';
             document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 2000);
+            setTimeout(() => toast.remove(), 2200);
         }
     } catch {}
 }
@@ -63,6 +58,7 @@ function useLiveViews(initialCount: number) {
     return { views, pulse };
 }
 
+// ─── BBC News Style Article Card ──────────────────────────────────────────────
 export function NewsCard({ 
     article, 
     horizontal = false, 
@@ -95,33 +91,29 @@ export function NewsCard({
             <article 
                 ref={indexRef as any}
                 onClick={handleOpen}
-                className={`group flex gap-4 items-start py-4 border-b border-border/80 hover:bg-card/40 p-3 rounded-none transition-all duration-300 relative cursor-pointer
-                    ${isSelected ? 'keyboard-focused-card bg-accent/2' : ''}`}
+                className={`group flex gap-4 items-center py-3.5 border-b border-border/60 hover:bg-muted/40 p-2.5 rounded-xl transition-all duration-200 cursor-pointer
+                    ${isSelected ? 'ring-2 ring-accent bg-accent/5' : ''}`}
             >
-                <div className="news-image-wrap w-20 h-20 flex-shrink-0 bg-muted rounded-none border border-brand/20 overflow-hidden relative">
-                    <img src={article.image_url || '/placeholder.jpg'} alt={article.title || 'News image'} loading="lazy" className="w-full h-full object-cover grayscale contrast-110 hover:grayscale-0 transition-all duration-700" />
-                    <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors" />
+                <div className="w-20 h-20 shrink-0 bg-muted rounded-xl border border-border/40 overflow-hidden relative">
+                    <img 
+                        src={article.image_url || '/placeholder.jpg'} 
+                        alt={article.title || 'News thumbnail'} 
+                        loading="lazy" 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    />
                 </div>
-                <div className="flex flex-col gap-1 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-mono font-black uppercase tracking-widest text-accent">{article.category}</span>
-                            <span className="flex items-center gap-0.5 text-[9px] font-mono font-black border border-accent/30 text-accent px-1.5 py-0.5 rounded-none bg-accent/5">
-                                <ShieldCheck className="w-2.5 h-2.5 text-accent" />
-                                {curationScore} INDEX
-                            </span>
-                        </div>
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <BookmarkButton article={article} />
-                        </div>
+                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-black uppercase tracking-wider text-accent bg-accent/10 px-2 py-0.5 rounded-md">
+                            {article.category || 'News'}
+                        </span>
+                        <span className="text-[10px] font-mono text-secondary uppercase font-bold truncate">
+                            {article.source}
+                        </span>
                     </div>
-                    <h3 className="text-sm md:text-base font-serif font-black leading-tight group-hover:text-accent transition-colors line-clamp-2 pr-4 cursor-pointer" onClick={() => handleOpen()}>
+                    <h3 className="text-sm font-serif font-bold leading-snug group-hover:text-accent transition-colors line-clamp-2">
                         {article.title}
                     </h3>
-                    <span className="text-[9px] text-secondary font-mono font-bold uppercase tracking-wide">{article.source} • {formatDate(article.publish_date)}</span>
-                    {article.other_sources && article.other_sources.length > 0 && (
-                        <OtherCoverage sources={article.other_sources} />
-                    )}
                 </div>
             </article>
         );
@@ -131,59 +123,61 @@ export function NewsCard({
         <article
             ref={indexRef as any}
             onClick={handleOpen}
-            className={`group flex flex-col gap-4 p-5 bg-card border-2 border-brand dark:border-border rounded-none shadow-[4px_4px_0px_0px_var(--color-brand)] dark:shadow-[4px_4px_0px_0px_var(--color-border)] hover:shadow-[8px_8px_0px_0px_var(--color-brand)] dark:hover:shadow-[8px_8px_0px_0px_var(--color-border)] hover:-translate-y-1 hover:-translate-x-0.5 transition-all duration-300 cursor-pointer ${!dense ? 'pb-6' : ''}
-                ${isSelected ? 'keyboard-focused-card bg-accent/2' : ''}`}
+            className={`group flex flex-col bg-card border border-border/80 hover:border-accent/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer ${
+                isSelected ? 'ring-2 ring-accent bg-accent/5' : ''
+            }`}
         >
-            <div className="news-image-wrap aspect-[16/9] bg-muted relative rounded-none border border-brand/20 overflow-hidden">
-                <img src={article.image_url || '/placeholder.jpg'} alt={article.title || 'News image'} loading="lazy" className="w-full h-full object-cover transition-transform duration-700" />
+            {/* Image Container with BBC Zoom Animation */}
+            <div className="aspect-[16/9] bg-muted relative overflow-hidden">
+                <img 
+                    src={article.image_url || '/placeholder.jpg'} 
+                    alt={article.title || 'News image'} 
+                    loading="lazy" 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
+                />
 
-                {/* Badges row */}
+                {/* Category & Just-In Pills */}
                 <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
-                    <div className="flex items-center gap-1.5 bg-black text-white text-[9px] font-mono font-black px-2.5 py-1 rounded-none border border-white/20 shadow-lg">
-                        <Award className="w-3 h-3 text-gold" />
-                        <span className="tracking-widest">VERITY INDEX // {curationScore}</span>
-                    </div>
+                    <span className="bg-black/80 backdrop-blur-md text-white text-[10px] font-mono font-black px-2.5 py-1 rounded-lg border border-white/20 uppercase tracking-widest shadow-md">
+                        {article.category || 'News'}
+                    </span>
                     {justIn && (
-                        <div className="flex items-center gap-1 bg-accent text-white text-[9px] font-mono font-black px-2 py-1 rounded-none shadow-lg animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                            JUST IN
-                        </div>
+                        <span className="bg-accent text-white text-[9px] font-mono font-black px-2 py-1 rounded-lg shadow-md animate-pulse">
+                            LIVE
+                        </span>
                     )}
                 </div>
 
                 <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={(e) => e.stopPropagation()}>
-                    <BookmarkButton article={article} className="bg-white dark:bg-black border border-brand rounded-none p-1 shadow-md" />
+                    <BookmarkButton article={article} className="bg-card/90 backdrop-blur-md border border-border rounded-xl p-1.5 shadow-md" />
                 </div>
             </div>
-            <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-mono font-black uppercase tracking-widest text-accent">{article.category || 'News'}</span>
-                <h3 className={`${dense ? 'text-lg' : 'text-xl md:text-2xl'} font-serif font-black leading-snug group-hover:text-accent transition-colors cursor-pointer`} onClick={() => handleOpen()}>
-                    {article.title}
-                </h3>
-                {!dense && (
-                    <p className="text-secondary text-sm leading-relaxed line-clamp-3 font-sans font-medium border-l-2 border-brand/20 pl-3">
-                        {article.summary || article.title}
-                    </p>
-                )}
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/60" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] font-mono font-black uppercase tracking-wider">{article.source}</span>
-                        <span className="w-1.5 h-1.5 bg-accent rounded-none" />
-                        <span className="text-[11px] text-secondary font-mono font-bold">{formatTime(article.publish_date)}</span>
-                        <span className="w-1.5 h-1.5 bg-border rounded-none hidden sm:block" />
-                        <span className="hidden sm:flex items-center gap-1 text-[10px] text-secondary font-mono">
-                            <Clock className="w-2.5 h-2.5" />{readTime}m
-                        </span>
+
+            {/* Content Body */}
+            <div className="p-5 flex flex-col flex-1 justify-between gap-4">
+                <div className="space-y-2">
+                    <h3 className={`${dense ? 'text-lg' : 'text-xl'} font-serif font-black leading-snug group-hover:text-accent transition-colors`}>
+                        {article.title}
+                    </h3>
+                    {!dense && article.summary && (
+                        <p className="text-secondary text-xs lg:text-sm leading-relaxed line-clamp-2 font-sans">
+                            {article.summary}
+                        </p>
+                    )}
+                </div>
+
+                {/* Card Footer */}
+                <div className="flex items-center justify-between pt-3 border-t border-border/60 text-[11px] font-mono text-secondary">
+                    <div className="flex items-center gap-2 truncate">
+                        <span className="font-black text-primary uppercase">{article.source}</span>
+                        <span>•</span>
+                        <span>{formatTime(article.publish_date)}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        {/* Reader count */}
-                        <span className="hidden sm:flex items-center gap-1 text-[10px] font-mono font-bold text-secondary">
-                            <Flame className={`w-3 h-3 text-orange-500 ${pulse ? 'animate-counter-pulse' : ''}`} />
-                            <span className={pulse ? 'text-accent font-black transition-colors duration-200' : ''}>
-                                {views.toLocaleString()}
-                            </span>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                        <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-secondary" /> {readTime}m
                         </span>
-                        {/* Share */}
                         <button
                             onClick={(e) => { e.stopPropagation(); shareArticle(article); }}
                             className="p-1 hover:text-accent transition-colors rounded cursor-pointer"
@@ -192,19 +186,14 @@ export function NewsCard({
                         >
                             <Share2 className="w-3.5 h-3.5" />
                         </button>
-                        <div className="md:hidden">
-                            <BookmarkButton article={article} />
-                        </div>
                     </div>
                 </div>
-                {article.other_sources && article.other_sources.length > 0 && (
-                    <OtherCoverage sources={article.other_sources} />
-                )}
             </div>
         </article>
     );
 }
 
+// ─── BBC Style Lead Story Component ───────────────────────────────────────────
 export function LeadStory({ 
     article,
     isSelected = false,
@@ -217,7 +206,6 @@ export function LeadStory({
     const curationScore = ((article.quality_score || 85.0) / 10).toFixed(1);
     const { openReader } = useReader();
     const { recordRead } = useReadingHistory();
-    const justIn = isJustIn(article.publish_date);
     const readTime = estimateReadTime(article.content || '');
 
     const handleOpen = (e?: React.MouseEvent) => {
@@ -229,48 +217,58 @@ export function LeadStory({
     return (
         <section 
             ref={indexRef as any}
-            className={`group py-8 border-b-4 border-double border-brand mb-12 transition-all duration-200
-                ${isSelected ? 'keyboard-focused-card keyboard-focused-lead bg-accent/2' : ''}`}
+            onClick={handleOpen}
+            className={`group bg-card border border-border/80 hover:border-accent/80 rounded-3xl p-6 lg:p-8 shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer mb-10
+                ${isSelected ? 'ring-2 ring-accent bg-accent/5' : ''}`}
         >
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                <div 
-                    onClick={() => handleOpen()}
-                    className="lg:col-span-8 news-image-wrap aspect-[16/9] relative border-2 border-brand dark:border-border rounded-none shadow-[6px_6px_0px_0px_var(--color-brand)] dark:shadow-[6px_6px_0px_0px_var(--color-border)] hover:shadow-[10px_10px_0px_0px_var(--color-brand)] dark:hover:shadow-[10px_10px_0px_0px_var(--color-border)] transition-all duration-300 cursor-pointer"
-                >
-                    <img src={article.image_url || ''} alt={article.title || 'Lead story image'} loading="eager" className="w-full h-full object-cover transition-transform duration-1000" />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                {/* 16:9 Main Image with Hover Zoom */}
+                <div className="lg:col-span-7 aspect-[16/9] bg-muted relative rounded-2xl overflow-hidden shadow-md">
+                    <img 
+                        src={article.image_url || '/placeholder.jpg'} 
+                        alt={article.title || 'Lead story image'} 
+                        loading="eager" 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
+                    />
                     
-                    {/* Curation Badge */}
-                    <div className="absolute top-4 left-4 z-10">
-                        <div className="flex items-center gap-1.5 bg-black text-white text-xs font-mono font-black px-3.5 py-1.5 rounded-none border border-white/20 shadow-xl">
-                            <ShieldCheck className="w-3.5 h-3.5 text-gold" />
-                            <span className="tracking-widest">EDITORIAL LEAD // SCORE {curationScore}</span>
-                        </div>
+                    <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
+                        <span className="bg-accent text-white text-xs font-mono font-black px-3 py-1.5 rounded-xl shadow-lg uppercase tracking-widest">
+                            TOP COVERAGE // {article.category || 'WORLD'}
+                        </span>
                     </div>
 
                     <div className="absolute top-4 right-4 z-10" onClick={(e) => e.stopPropagation()}>
-                        <BookmarkButton article={article} className="bg-white dark:bg-black border border-brand p-1.5 rounded-none shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <BookmarkButton article={article} className="bg-card/90 backdrop-blur-md border border-border p-2 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                 </div>
-                <div className="lg:col-span-4 flex flex-col justify-center gap-6">
-                    <div className="flex justify-between items-start">
-                        <span className="text-xs font-mono font-black uppercase tracking-[0.3em] text-accent flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 bg-accent rounded-none animate-pulse"></span>
-                            Lead Coverage
-                        </span>
-                        <BookmarkButton article={article} showText />
+
+                {/* Article Headline & Summary */}
+                <div className="lg:col-span-5 flex flex-col justify-center gap-4">
+                    <div className="flex items-center gap-3 text-xs font-mono font-black uppercase text-accent">
+                        <span className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
+                        <span>Breaking Lead</span>
                     </div>
 
-                    <h2 className="text-3xl lg:text-5xl font-serif font-black leading-tight group-hover:text-accent transition-colors cursor-pointer" onClick={() => handleOpen()}>
+                    <h2 className="text-2xl lg:text-4xl font-serif font-black leading-tight group-hover:text-accent transition-colors">
                         {article.title}
                     </h2>
-                    <p className="text-secondary text-base lg:text-lg leading-relaxed font-sans font-medium cursor-pointer" onClick={() => handleOpen()}>
-                        <span className="text-3xl font-serif font-bold text-brand mr-1 leading-none float-left uppercase">T</span>
-                        {article.summary || "High-priority analysis on today's defining global event. Our editorial team has flagged this development for immediate attention."}
+
+                    <p className="text-secondary text-sm lg:text-base leading-relaxed font-sans line-clamp-4">
+                        {article.summary || article.content}
                     </p>
-                    <div className="flex items-center gap-4 text-[10px] font-mono font-black uppercase tracking-widest pt-4 border-t border-border">
-                        <div className="px-2.5 py-1 bg-brand text-background dark:text-black font-black rounded-none">{article.source}</div>
-                        <span>{formatDate(article.publish_date)}</span>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-border/60 text-xs font-mono text-secondary">
+                        <div className="flex items-center gap-2">
+                            <span className="font-black text-primary uppercase">{article.source}</span>
+                            <span>•</span>
+                            <span>{formatDate(article.publish_date)}</span>
+                        </div>
+
+                        <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-accent" /> {readTime} min read
+                        </span>
                     </div>
+
                     {article.other_sources && article.other_sources.length > 0 && (
                         <OtherCoverage sources={article.other_sources} />
                     )}
@@ -281,7 +279,6 @@ export function LeadStory({
 }
 
 export function OtherCoverage({ sources }: { sources: { id: number; source: string; title: string }[] }) {
-    const { openReader } = useReader();
     if (!sources || sources.length === 0) return null;
 
     const seen = new Set<string>();
@@ -295,23 +292,16 @@ export function OtherCoverage({ sources }: { sources: { id: number; source: stri
     if (uniqueSources.length === 0) return null;
 
     return (
-        <div className="mt-3.5 pt-3 border-t border-border/40 flex flex-wrap items-center gap-2 text-[10px] font-mono font-bold text-secondary" onClick={(e) => e.stopPropagation()}>
-            <span className="flex items-center gap-1 uppercase tracking-wider">
-                <Layers className="w-3.5 h-3.5 text-accent" />
+        <div className="pt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono font-bold text-secondary" onClick={(e) => e.stopPropagation()}>
+            <span className="flex items-center gap-1 uppercase tracking-wider text-accent">
+                <Layers className="w-3.5 h-3.5" />
                 Cross-Coverage:
             </span>
-            <div className="flex flex-wrap gap-1.5">
-                {uniqueSources.map((s) => (
-                    <button
-                        key={s.id}
-                        onClick={(e) => { e.preventDefault(); openReader(s.id); }}
-                        className="px-2 py-0.5 rounded-none bg-muted hover:bg-accent/15 hover:text-accent transition-colors cursor-pointer border border-border/60"
-                        title={s.title}
-                    >
-                        {s.source}
-                    </button>
-                ))}
-            </div>
+            {uniqueSources.slice(0, 3).map(s => (
+                <span key={s.id} className="px-2 py-0.5 bg-muted rounded-md border border-border/50 uppercase">
+                    {s.source}
+                </span>
+            ))}
         </div>
     );
 }
