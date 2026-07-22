@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react';
 import ReaderModal from '../components/ReaderModal';
+import MobileReaderSheet from '../components/mobile/MobileReaderSheet';
+import { useViewport } from '../hooks/useViewport';
 
 interface ReaderContextType {
   activeArticleId: number | null;
@@ -13,6 +15,7 @@ const ReaderContext = createContext<ReaderContextType | undefined>(undefined);
 
 export function ReaderProvider({ children }: { children: ReactNode }) {
   const [activeArticleId, setActiveArticleId] = useState<number | null>(null);
+  const { isMobile } = useViewport();
 
   const openReader = (id: number) => {
     setActiveArticleId(id);
@@ -26,7 +29,11 @@ export function ReaderProvider({ children }: { children: ReactNode }) {
     <ReaderContext.Provider value={{ activeArticleId, openReader, closeReader }}>
       {children}
       {activeArticleId !== null && (
-        <ReaderModal articleId={activeArticleId} onClose={closeReader} />
+        isMobile ? (
+          <MobileReaderSheet articleId={activeArticleId} onClose={closeReader} />
+        ) : (
+          <ReaderModal articleId={activeArticleId} onClose={closeReader} />
+        )
       )}
     </ReaderContext.Provider>
   );

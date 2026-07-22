@@ -50,10 +50,37 @@
   --color-muted-foreground: #94a3b8;
 }
 
+/* ── 8-Point Grid Spacing Tokens ────────────────────────────────────────── */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Fluid Responsive Typography Tokens using clamp() */
+  --font-fluid-hero: clamp(1.85rem, 5.5vw, 4.5rem);
+  --font-fluid-h1: clamp(1.5rem, 4vw, 3rem);
+  --font-fluid-h2: clamp(1.25rem, 3vw, 2.25rem);
+  --font-fluid-body: clamp(0.9375rem, 1.2vw, 1.125rem);
+}
+
 /* Base Styles */
+html {
+  overflow-x: hidden;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   @apply bg-background text-primary antialiased;
   font-family: var(--font-sans);
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
