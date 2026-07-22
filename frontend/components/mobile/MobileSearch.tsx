@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Search, X, Loader2, Clock, TrendingUp, Sparkles, ChevronRight } from 'lucide-react';
+import { Search, X, Loader2, Clock, TrendingUp, Sparkles, ChevronRight, Filter } from 'lucide-react';
 import { API_ENDPOINTS } from '../../lib/config';
 import type { Article } from '../../app/page';
 import { useReader } from '../../contexts/ReaderContext';
@@ -10,10 +10,12 @@ interface MobileSearchProps {
     onClose: () => void;
 }
 
-const POPULAR_SEARCHES = ['Climate', 'AI & Tech', 'Election', 'Markets', 'Sports', 'India'];
+const POPULAR_SEARCHES = ['Climate', 'AI & Tech', 'Election', 'Markets', 'Sports', 'India', 'Space'];
+const SEARCH_CATEGORIES = ['All', 'World', 'Technology', 'Business', 'Sports', 'Science', 'Health', 'Politics'];
 
 export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
     const [query, setQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [results, setResults] = useState<Article[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -48,10 +50,11 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
         } else {
             setQuery('');
             setResults([]);
+            setSelectedCategory('All');
         }
     }, [isOpen]);
 
-    // Google-style instant search debounced at 200ms
+    // Google-style tokenized instant search debounced at 150ms
     useEffect(() => {
         const trimmed = query.trim();
         if (!trimmed) {
@@ -63,7 +66,8 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
         setIsLoading(true);
         const timer = setTimeout(async () => {
             try {
-                const searchUrl = `${API_ENDPOINTS.SEARCH}?q=${encodeURIComponent(trimmed)}&limit=15`;
+                const catQuery = selectedCategory !== 'All' ? `&category=${encodeURIComponent(selectedCategory)}` : '';
+                const searchUrl = `${API_ENDPOINTS.SEARCH}?q=${encodeURIComponent(trimmed)}&limit=25${catQuery}`;
                 const res = await fetch(searchUrl);
                 if (res.ok) {
                     const data = await res.json();
@@ -78,10 +82,10 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
             } finally {
                 setIsLoading(false);
             }
-        }, 200);
+        }, 150);
 
         return () => clearTimeout(timer);
-    }, [query]);
+    }, [query, selectedCategory]);
 
     if (!isOpen) return null;
 
@@ -103,9 +107,19 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
         }
     };
 
+    const formatRelativeTime = (dateStr?: string) => {
+        if (!dateStr) return 'Recently';
+        const diffMs = Date.now() - new Date(dateStr).getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 60) return `${Math.max(1, diffMins)}m ago`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return `${Math.floor(diffHours / 24)}d ago`;
+    };
+
     return (
         <div className="fixed inset-0 z-50 bg-background flex flex-col select-none animate-in fade-in duration-200">
-            {/* 1. Google-Style Top Search Input Bar */}
+            {/* 1. Top Search Input Bar */}
             <div className="h-16 px-4 border-b border-border flex items-center gap-3 bg-card dark:bg-slate-900 shrink-0 shadow-sm">
                 <Search className="w-5 h-5 text-accent shrink-0" />
                 <input
@@ -113,7 +127,7 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search global news, topics, sources..."
+                    placeholder="Search 800+ stories, topics, outlets..."
                     className="flex-1 bg-transparent text-primary text-base font-medium placeholder:text-secondary focus:outline-none"
                 />
                 {query && (
@@ -133,13 +147,31 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
                 </button>
             </div>
 
-            {/* 2. Results & Suggestions Scroll View */}
+            {/* 2. In-Search Category Filter Pills */}
+            <div className="px-4 py-2 bg-muted/40 border-b border-border flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+                <Filter className="w-3.5 h-3.5 text-secondary shrink-0" />
+                {SEARCH_CATEGORIES.map(cat => (
+                    <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
+                            selectedCategory === cat
+                                ? 'bg-accent text-white shadow-sm font-black'
+                                : 'bg-card border border-border text-secondary hover:text-primary'
+                        }`}
+                    >
+                        {cat}
+                    </button>
+                ))}
+            </div>
+
+            {/* 3. Results & Suggestions Scroll View */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
                 {isLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 gap-3">
                         <Loader2 className="w-8 h-8 animate-spin text-accent" />
                         <span className="text-xs font-mono font-bold uppercase tracking-widest text-secondary">
-                            Searching 800+ Verified Stories...
+                            Searching Verified Outlets...
                         </span>
                     </div>
                 ) : query.trim().length > 0 ? (
@@ -147,30 +179,49 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
                         <div className="space-y-3">
                             <div className="flex items-center justify-between pb-2 border-b border-border">
                                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-secondary">
-                                    Found {results.length} Stories
+                                    {results.length} Matching Stori{results.length !== 1 ? 'es' : 'y'}
                                 </span>
-                                <span className="text-[9px] font-mono text-accent">Tap to read full story</span>
+                                <span className="text-[9px] font-mono text-accent">Tap story to read</span>
                             </div>
 
+                            {/* Rich Cards Stream */}
                             {results.map((art) => (
                                 <div
                                     key={art.id}
                                     onClick={() => handleSelectResult(art)}
-                                    className="p-3.5 rounded-xl border border-border bg-card hover:border-accent active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                                    className="p-3 rounded-2xl border border-border bg-card hover:border-accent active:scale-[0.99] transition-all cursor-pointer flex items-center gap-3.5 group shadow-sm"
                                 >
+                                    {/* Thumbnail Image */}
+                                    {art.image_url ? (
+                                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/40">
+                                            <img
+                                                src={art.image_url}
+                                                alt={art.title}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="w-16 h-16 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 border border-accent/20">
+                                            <Search className="w-6 h-6 text-accent" />
+                                        </div>
+                                    )}
+
+                                    {/* Content Info */}
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-[9px] font-mono font-black uppercase tracking-wider text-accent bg-accent/10 px-2 py-0.5 rounded">
+                                        <div className="flex items-center justify-between gap-2 mb-1 text-[9px] font-mono">
+                                            <span className="font-black uppercase text-accent bg-accent/10 px-1.5 py-0.5 rounded">
                                                 {art.category || 'News'}
                                             </span>
-                                            <span className="text-[10px] font-mono font-bold text-secondary uppercase truncate">
-                                                {art.source}
+                                            <span className="text-secondary font-bold truncate">
+                                                {art.source} • {formatRelativeTime(art.publish_date)}
                                             </span>
                                         </div>
-                                        <h3 className="font-serif text-sm font-bold leading-snug text-primary group-hover:text-accent line-clamp-2">
+
+                                        <h3 className="font-serif text-sm font-bold leading-tight text-primary group-hover:text-accent line-clamp-2">
                                             {art.title}
                                         </h3>
                                     </div>
+
                                     <ChevronRight className="w-4 h-4 text-secondary group-hover:text-accent shrink-0" />
                                 </div>
                             ))}
@@ -179,18 +230,18 @@ export default function MobileSearch({ isOpen, onClose }: MobileSearchProps) {
                         <div className="text-center py-20 space-y-3">
                             <Search className="w-12 h-12 text-secondary/30 mx-auto" />
                             <p className="text-sm font-bold text-primary">No stories matching &quot;{query}&quot;</p>
-                            <p className="text-xs text-secondary">Try searching broader keywords like Climate, AI, or World</p>
+                            <p className="text-xs text-secondary">Try searching broader terms or switching category filters</p>
                         </div>
                     )
                 ) : (
-                    /* Default Google-Style Suggestions View */
+                    /* Default Suggestions View */
                     <div className="space-y-6 pt-2">
                         {/* Recent Searches */}
                         {recentSearches.length > 0 && (
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-secondary flex items-center gap-1.5">
-                                        <Clock className="w-3.5 h-3.5" /> Recent Searches
+                                        <Clock className="w-3.5 h-3.5 text-accent" /> Recent Searches
                                     </span>
                                     <button
                                         onClick={clearRecent}

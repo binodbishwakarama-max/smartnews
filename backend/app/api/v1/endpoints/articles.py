@@ -171,31 +171,59 @@ def search_articles(
     Returns results ranked by relevance and recency.
     """
     limit = min(limit, 50)
-    search_term = f"%{q.strip()}%"
+    raw_q = q.strip()
+    terms = [t for t in raw_q.split() if len(t) >= 2]
+    if not terms:
+        terms = [raw_q]
     
     query = db.query(Article)
     
     # Category filter if provided
-    if category:
+    if category and category.lower() != "all":
         query = query.filter(Article.category.ilike(f"%{category}%"))
     
-    # Multi-field search
-    query = query.filter(
-        or_(
-            Article.title.ilike(search_term),
-            Article.summary.ilike(search_term),
-            Article.content.ilike(search_term),
-            Article.author.ilike(search_term)
+    # Tokenized multi-term search matching Title, Summary, Tags, Category, Source, and Content
+    strict_conditions = []
+    for term in terms:
+        pattern = f"%{term}%"
+        strict_conditions.append(
+            or_(
+                Article.title.ilike(pattern),
+                Article.summary.ilike(pattern),
+                Article.tags.ilike(pattern),
+                Article.category.ilike(pattern),
+                Article.source.ilike(pattern),
+                Article.content.ilike(pattern)
+            )
         )
-    )
     
-    total_count = query.count()
+    # 1. Primary Strict Search: Match ALL terms (AND)
+    strict_query = query.filter(and_(*strict_conditions))
+    strict_results = strict_query.order_by(Article.feed_score.desc(), Article.publish_date.desc()).limit(limit).all()
     
-    # Prioritize title matches, then by quality score and date
-    results = query.order_by(
-        Article.feed_score.desc(),
-        Article.publish_date.desc()
-    ).offset(offset).limit(limit).all()
+    results = list(strict_results)
+    
+    # 2. Fallback Broad Search: Match ANY term (OR) if strict results are fewer than requested limit
+    if len(results) < limit:
+        existing_ids = {a.id for a in results}
+        any_conditions = [
+            or_(
+                Article.title.ilike(f"%{t}%"),
+                Article.summary.ilike(f"%{t}%"),
+                Article.tags.ilike(f"%{t}%"),
+                Article.category.ilike(f"%{t}%"),
+                Article.source.ilike(f"%{t}%")
+            )
+            for t in terms
+        ]
+        broad_query = query.filter(or_(*any_conditions))
+        if existing_ids:
+            broad_query = broad_query.filter(Article.id.not_in(list(existing_ids)))
+        
+        additional = broad_query.order_by(Article.feed_score.desc(), Article.publish_date.desc()).limit(limit - len(results)).all()
+        results.extend(additional)
+    
+    total_count = len(results)
     
     # Serialize results to dicts to avoid JSON serialization errors
     serialized_results = [
