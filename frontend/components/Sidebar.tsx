@@ -19,6 +19,8 @@ interface Article {
     publish_date: string;
 }
 
+import { UserButton, SignedIn, SignedOut, SignInButton, SignUpButton } from '@clerk/nextjs';
+
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const [stats, setStats] = useState<Stats | null>(null);
     const [quickFeed, setQuickFeed] = useState<Article[]>([]);
@@ -81,7 +83,35 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-12">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+                        {/* Account Controls on Mobile */}
+                        <section className="p-4 bg-muted/50 border border-border rounded-xl">
+                            <h3 className="text-[9px] text-secondary mb-3 flex items-center justify-between">
+                                <span>Account & Access</span>
+                            </h3>
+                            <SignedIn>
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <UserButton afterSignOutUrl="/" />
+                                        <span className="text-xs font-bold text-primary">Profile</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs">
+                                        <Link href="/saved" onClick={onClose} className="hover:text-accent font-black hover:underline">SAVED</Link>
+                                        <Link href="/admin" onClick={onClose} className="hover:text-accent font-black hover:underline">ADMIN</Link>
+                                    </div>
+                                </div>
+                            </SignedIn>
+                            <SignedOut>
+                                <div className="flex items-center gap-3">
+                                    <SignInButton mode="modal">
+                                        <button className="flex-1 py-2 px-3 bg-accent text-white rounded-lg text-xs font-bold text-center">Sign In</button>
+                                    </SignInButton>
+                                    <SignUpButton mode="modal">
+                                        <button className="flex-1 py-2 px-3 border border-border rounded-lg text-xs font-bold text-center hover:bg-muted">Sign Up</button>
+                                    </SignUpButton>
+                                </div>
+                            </SignedOut>
+                        </section>
                         {/* Error Display */}
                         {error && (
                             <ApiErrorDisplay error={error} onRetry={loadData} />

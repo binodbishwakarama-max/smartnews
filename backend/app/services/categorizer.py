@@ -95,17 +95,14 @@ KEYWORD_SIGNAL_TIERS: Dict[str, float] = {
 # Signal boost weights — structured signals are more reliable than keyword
 # frequency so they get proportionally higher weight.
 # ---------------------------------------------------------------------------
-URL_SIGNAL_BOOST = 40       # was 10 — URL path is a strong structural signal
-HINT_CATEGORY_BOOST = 75    # was 25 — RSS feed category is the most reliable signal
+# Signal boost weights — content and headline keywords determine category accuracy
+URL_SIGNAL_BOOST = 15.0       # Structural path boost
+HINT_CATEGORY_BOOST = 10.0    # Gentle prior boost (does not override strong content keywords)
 
 
 def _keyword_weight(keyword: str) -> float:
-    """Return the effective weight for a single keyword occurrence.
-
-    Base weight: 1.5 for multi-word / long keywords, 1.0 for short ones.
-    Multiplied by the signal-tier factor (high / default / low).
-    """
-    base = 1.5 if len(keyword) > 5 else 1.0
+    """Return the effective weight for a single keyword occurrence."""
+    base = 2.0 if len(keyword) > 5 else 1.2
     tier_multiplier = KEYWORD_SIGNAL_TIERS.get(keyword.lower(), 1.0)
     return base * tier_multiplier
 
@@ -119,6 +116,7 @@ def classify_by_url(url: str) -> Optional[str]:
         '/business': 'Business & Finance',
         '/economy': 'Business & Finance',
         '/finance': 'Business & Finance',
+        '/markets': 'Business & Finance',
         '/science': 'Science',
         '/health': 'Health',
         '/education': 'Education',
@@ -129,7 +127,8 @@ def classify_by_url(url: str) -> Optional[str]:
         '/ai': 'AI & Startups',
         '/startups': 'AI & Startups',
         '/sports': 'Sports',
-        '/sport/': 'Sports'
+        '/sport/': 'Sports',
+        '/cricket': 'Sports'
     }
     for path, cat in mapping.items():
         if path in url:
@@ -137,23 +136,18 @@ def classify_by_url(url: str) -> Optional[str]:
     return None
 
 
-def classify_by_keywords(text: str) -> Dict[str, float]:
-    """Signal 2: Weighted Keyword Scoring with occurrence cap and signal tiers.
-
-    For each keyword in each category:
-      1. Count occurrences via regex word-boundary match.
-      2. Cap the count at MAX_KEYWORD_OCCURRENCES so no single word can
-         dominate a category score by sheer repetition.
-      3. Multiply by the keyword's effective weight (base × signal-tier).
-    """
+def classify_by_keywords(text: str, is_title: bool = False) -> Dict[str, float]:
+    """Signal 2: Weighted Keyword Scoring with occurrence cap and signal tiers."""
     text = text.lower()
     scores: Dict[str, float] = {cat: 0.0 for cat in CATEGORY_KEYWORDS}
+
+    title_multiplier = 3.0 if is_title else 1.0
 
     for cat, keywords in CATEGORY_KEYWORDS.items():
         for kw in keywords:
             raw_matches = len(re.findall(f'\\b{re.escape(kw)}\\b', text))
             capped = min(raw_matches, MAX_KEYWORD_OCCURRENCES)
-            scores[cat] += capped * _keyword_weight(kw)
+            scores[cat] += capped * _keyword_weight(kw) * title_multiplier
 
     return scores
 
@@ -161,28 +155,32 @@ def classify_by_keywords(text: str) -> Dict[str, float]:
 def smart_categorize(title: str, content: str, url: str, hint_category: str = None) -> str:
     """
     Multi-Signal Classifier
-    1. Hint Category from Feed (Highest weight — trusted RSS feed label)
-    2. URL Path Signal       (High weight — structural path in URL)
-    3. Keyword Density       (Medium weight — capped & tier-weighted)
+    1. Title Keywords (3.0x weight - headline is the strongest signal)
+    2. Body Content Keywords (1.0x weight - capped & tier-weighted)
+    3. URL Path Signal (Moderate boost)
+    4. Hint Category (Gentle tie-breaker)
     """
-    full_text = f"{title} {title} {content}"
+    # 1. Headline scoring (highest density signal)
+    title_scores = classify_by_keywords(title, is_title=True)
+    
+    # 2. Body content scoring
+    body_scores = classify_by_keywords(content[:2500], is_title=False)
 
-    # 1. Keyword scores base (capped + tier-weighted)
-    kw_scores = classify_by_keywords(full_text)
+    kw_scores: Dict[str, float] = {cat: title_scores[cat] + body_scores[cat] for cat in CATEGORY_KEYWORDS}
 
-    # 2. URL signal boost
+    # 3. URL path signal boost
     url_cat = classify_by_url(url)
-    if url_cat:
+    if url_cat and url_cat in kw_scores:
         kw_scores[url_cat] += URL_SIGNAL_BOOST
 
-    # 3. Hint category boost (strongest prior — comes from the feed config)
+    # 4. Hint category boost (gentle tie-breaker)
     if hint_category and hint_category in kw_scores:
         kw_scores[hint_category] += HINT_CATEGORY_BOOST
 
     # Get the best category
     best_cat = max(kw_scores, key=kw_scores.get)
 
-    if kw_scores[best_cat] < 2:
+    if kw_scores[best_cat] < 2.0:
         return "General"
 
     return best_cat
