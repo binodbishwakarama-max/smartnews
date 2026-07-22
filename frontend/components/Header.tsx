@@ -55,7 +55,7 @@ export default function Header() {
             <header className="hidden md:block bg-background border-b border-border sticky top-0 z-50 transition-colors duration-200">
                 {/* 1. BBC Top Utility Header Bar */}
                 <div className="bg-black text-white text-xs font-sans py-2 px-6">
-                    <div className="max-w-7xl mx-auto flex items-center justify-between">
+                    <div className="max-w-screen-2xl mx-auto px-6 lg:px-10 flex items-center justify-between">
                         <div className="flex items-center gap-6">
                             {/* BBC Style Logo Blocks */}
                             <Link href="/" className="flex items-center gap-1 font-black text-lg tracking-tighter">
@@ -107,7 +107,7 @@ export default function Header() {
 
                 {/* 2. BBC Category Navigation Bar */}
                 <nav className="bg-card border-b border-border py-3">
-                    <div className="max-w-7xl mx-auto px-6 flex items-center justify-between gap-6">
+                    <div className="max-w-screen-2xl mx-auto px-6 lg:px-10 flex items-center justify-between gap-6">
                         <button
                             onClick={() => setIsSidebarOpen(true)}
                             className="p-1.5 hover:bg-muted rounded-lg transition-colors"

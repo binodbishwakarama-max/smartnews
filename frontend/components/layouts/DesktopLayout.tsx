@@ -19,8 +19,8 @@ export default function DesktopLayout({ articles, trending, category }: DesktopL
         <div className="min-h-screen bg-background text-primary selection:bg-accent selection:text-white">
             <Header />
 
-            {/* Prestige Master Layout Container (BBC / The Hindu / NYTimes Standard max-w-7xl) */}
-            <main className="max-w-7xl mx-auto px-6 py-10">
+            {/* Prestige Master Layout Container (BBC / Widescreen Standard max-w-screen-2xl) */}
+            <main className="max-w-screen-2xl mx-auto px-6 lg:px-10 py-10">
                 {category && category !== 'For You' && (
                     <div className="mb-10 border-b-4 border-primary pb-4 flex justify-between items-end">
                         <h2 className="text-5xl font-serif font-black tracking-tighter uppercase text-primary">{category}</h2>
@@ -29,10 +29,10 @@ export default function DesktopLayout({ articles, trending, category }: DesktopL
                 )}
 
                 {/* Balanced 2-Column Editorial Layout */}
-                <div className="flex flex-col lg:flex-row gap-12 items-start">
+                <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 items-start">
                     
-                    {/* LEFT / MAIN COLUMN: Primary Story Stream (Flex-1 / 70% Width) */}
-                    <div className="flex-1 min-w-0 border-r border-border/80 lg:pr-12 space-y-8">
+                    {/* LEFT / MAIN COLUMN: Primary Story Stream (Flex-1 / 72% Width) */}
+                    <div className="flex-1 min-w-0 border-r border-border/80 lg:pr-10 space-y-8">
                         {category === 'For You' ? (
                             <ForYouFeed />
                         ) : (
@@ -44,8 +44,8 @@ export default function DesktopLayout({ articles, trending, category }: DesktopL
                         )}
                     </div>
 
-                    {/* RIGHT COLUMN: Trending Topics & Leaderboard Shorts (320px Sticky Sidebar) */}
-                    <aside className="lg:w-80 shrink-0 space-y-10 sticky top-32">
+                    {/* RIGHT COLUMN: Trending Topics & Leaderboard Shorts (360px Sticky Sidebar) */}
+                    <aside className="lg:w-96 shrink-0 space-y-10 sticky top-32">
                         {/* 1. Real-Time Trending Topics Cloud */}
                         <TrendingSidebar topics={trending} />
 
@@ -70,7 +70,7 @@ export default function DesktopLayout({ articles, trending, category }: DesktopL
 
             {/* Prestige Editorial Footer */}
             <footer className="mt-32 border-t-2 border-primary bg-card py-16">
-                <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+                <div className="max-w-screen-2xl mx-auto px-6 lg:px-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
                     <div className="col-span-1 lg:col-span-2">
                         <h2 className="text-4xl font-serif font-black tracking-tighter uppercase mb-4">
                             The Smart News<span className="text-accent">.</span>
