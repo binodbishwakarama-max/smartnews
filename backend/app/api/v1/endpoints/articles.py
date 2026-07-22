@@ -40,22 +40,29 @@ def get_articles(
     if not (search and search.strip()) and not source:
         query = query.filter(or_(Article.cluster_id.is_(None), Article.cluster_id == Article.id))
     
-    # Category filter with smart keyword fallback
+    # Category filter with robust ampersand & keyword normalization
     if category and category.lower() != "all":
-        cat_term = f"%{category.strip()}%"
-        cat_query = query.filter(Article.category.ilike(cat_term))
-        if cat_query.count() > 0:
-            query = cat_query
-        else:
-            # Fallback: search across category, title, summary, and tags
-            query = query.filter(
-                or_(
-                    Article.category.ilike(cat_term),
-                    Article.title.ilike(cat_term),
-                    Article.summary.ilike(cat_term),
-                    Article.tags.ilike(cat_term)
-                )
-            )
+        # Handle unescaped ampersands or URL encoding splits (e.g. 'AI & Startups', 'Business & Finance')
+        clean_cat = category.replace('&', ' ').replace('and', ' ').strip()
+        cat_terms = [t.strip() for t in clean_cat.split() if len(t.strip()) > 1]
+        
+        if cat_terms:
+            cat_conditions = [Article.category.ilike(f"%{t}%") for t in cat_terms]
+            cat_query = query.filter(or_(*cat_conditions))
+            if cat_query.count() > 0:
+                query = cat_query
+            else:
+                # Fallback: search across category, title, summary, and tags for any cat_term
+                fallback_conditions = []
+                for t in cat_terms:
+                    pattern = f"%{t}%"
+                    fallback_conditions.extend([
+                        Article.category.ilike(pattern),
+                        Article.title.ilike(pattern),
+                        Article.summary.ilike(pattern),
+                        Article.tags.ilike(pattern)
+                    ])
+                query = query.filter(or_(*fallback_conditions))
     
     # Source filter
     if source:
