@@ -19,24 +19,25 @@ export default function MobileBottomNav({ onOpenMenu, onOpenSearch, onOpenPulse 
 
     return (
         <nav 
-            className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 dark:bg-background/95 backdrop-blur-xl border-t border-border/80 h-16 px-2 flex items-center justify-around select-none shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]"
+            className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-panel border-t border-border/80 h-16 px-2 flex items-center justify-around select-none shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.4)]"
             aria-label="Mobile Navigation Bar"
         >
             {/* 1. Feed Item */}
             <Link
                 href="/"
-                className={`flex-1 h-12 flex flex-col items-center justify-center gap-1 rounded-xl transition-all active:scale-95 ${
-                    isHome ? 'text-accent font-bold' : 'text-secondary hover:text-primary'
+                className={`relative flex-1 h-12 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-all duration-200 active:scale-90 ${
+                    isHome ? 'text-accent font-black' : 'text-secondary hover:text-primary'
                 }`}
             >
                 <Newspaper className="w-5 h-5" />
                 <span className="text-[9.5px] font-mono uppercase tracking-wider">Feed</span>
+                {isHome && <span className="w-1 h-1 bg-accent rounded-full animate-in zoom-in duration-200" />}
             </Link>
 
             {/* 2. Live Pulse */}
             <button
                 onClick={onOpenPulse}
-                className="flex-1 h-12 flex flex-col items-center justify-center gap-1 rounded-xl text-secondary hover:text-primary transition-all active:scale-95"
+                className="relative flex-1 h-12 flex flex-col items-center justify-center gap-0.5 rounded-xl text-secondary hover:text-primary transition-all duration-200 active:scale-90"
                 aria-label="Open Live Pulse"
             >
                 <Zap className="w-5 h-5 text-yellow-500 animate-pulse" />
@@ -46,7 +47,7 @@ export default function MobileBottomNav({ onOpenMenu, onOpenSearch, onOpenPulse 
             {/* 3. Search */}
             <button
                 onClick={onOpenSearch}
-                className="flex-1 h-12 flex flex-col items-center justify-center gap-1 rounded-xl text-secondary hover:text-primary transition-all active:scale-95"
+                className="relative flex-1 h-12 flex flex-col items-center justify-center gap-0.5 rounded-xl text-secondary hover:text-primary transition-all duration-200 active:scale-90"
                 aria-label="Search"
             >
                 <Search className="w-5 h-5" />
@@ -56,18 +57,19 @@ export default function MobileBottomNav({ onOpenMenu, onOpenSearch, onOpenPulse 
             {/* 4. Bookmarks */}
             <Link
                 href="/saved"
-                className={`flex-1 h-12 flex flex-col items-center justify-center gap-1 rounded-xl transition-all active:scale-95 ${
-                    isSaved ? 'text-accent font-bold' : 'text-secondary hover:text-primary'
+                className={`relative flex-1 h-12 flex flex-col items-center justify-center gap-0.5 rounded-xl transition-all duration-200 active:scale-90 ${
+                    isSaved ? 'text-accent font-black' : 'text-secondary hover:text-primary'
                 }`}
             >
                 <Bookmark className="w-5 h-5" />
                 <span className="text-[9.5px] font-mono uppercase tracking-wider">Saved</span>
+                {isSaved && <span className="w-1 h-1 bg-accent rounded-full animate-in zoom-in duration-200" />}
             </Link>
 
             {/* 5. Menu Drawer */}
             <button
                 onClick={onOpenMenu}
-                className="flex-1 h-12 flex flex-col items-center justify-center gap-1 rounded-xl text-secondary hover:text-primary transition-all active:scale-95"
+                className="relative flex-1 h-12 flex flex-col items-center justify-center gap-0.5 rounded-xl text-secondary hover:text-primary transition-all duration-200 active:scale-90"
                 aria-label="Open Menu"
             >
                 <Menu className="w-5 h-5" />
