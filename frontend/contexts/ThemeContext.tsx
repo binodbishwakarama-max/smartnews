@@ -116,19 +116,33 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }, [theme]);
 
     const setThemeMode = (mode: ThemeMode) => {
+        const root = document.documentElement;
+        root.classList.add('no-transitions');
         persistThemeMode(mode);
         if (mode === 'auto') {
             setClock(Date.now());
         }
+        setTimeout(() => {
+            root.classList.remove('no-transitions');
+        }, 50);
     };
 
     const toggleTheme = () => {
-        if (themeMode === 'auto') {
-            setThemeMode(theme === 'light' ? 'dark' : 'light');
-            return;
+        const root = document.documentElement;
+        root.classList.add('no-transitions');
+
+        const nextTheme = theme === 'dark' ? 'light' : 'dark';
+        if (nextTheme === 'dark') {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
         }
 
-        setThemeMode(theme === 'light' ? 'dark' : 'light');
+        persistThemeMode(nextTheme);
+
+        setTimeout(() => {
+            root.classList.remove('no-transitions');
+        }, 50);
     };
 
     return (

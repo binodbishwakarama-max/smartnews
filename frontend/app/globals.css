@@ -50,6 +50,14 @@
   --color-muted-foreground: #94a3b8;
 }
 
+/* Prevent transition lag during theme toggles */
+.no-transitions,
+.no-transitions *,
+.no-transitions *::before,
+.no-transitions *::after {
+  transition: none !important;
+}
+
 /* ── 8-Point Grid Spacing Tokens ────────────────────────────────────────── */
 :root {
   --space-1: 4px;
