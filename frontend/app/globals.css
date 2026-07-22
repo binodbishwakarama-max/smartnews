@@ -1,48 +1,48 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Lora:ital,wght@0,400;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  /* Ultra-Premium Editorial Typography */
-  --font-sans: "Plus Jakarta Sans", "Outfit", "Segoe UI", sans-serif;
-  --font-serif: "Playfair Display", "Cinzel", Georgia, serif;
+  /* BBC News Typography System */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Lora", Georgia, Cambria, serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  /* Classic Journalism Palette - Light Mode */
-  --color-brand: #111111;
-  --color-accent: #c22026; /* Premium crimson editorial red */
-  --color-gold: #b28e40; /* Royal gold for top quality items */
-  --color-primary: #111827; /* Tailwind gray-900 */
-  --color-secondary: #4b5563; /* Tailwind gray-600 */
-  --color-border: #e5e7eb; /* Tailwind gray-200 */
-  --color-background: #fcfbf9; /* Soft museum newsprint paper background */
-  --color-paper: #f7f5f0;
-  --color-muted: #f3f4f6;
+  /* Official BBC News Palette - Light Mode */
+  --color-brand: #bb1919;
+  --color-accent: #bb1919; /* Iconic BBC Red */
+  --color-gold: #d97706;
+  --color-primary: #121212; /* Deep high-contrast BBC black */
+  --color-secondary: #545658; /* BBC slate gray */
+  --color-border: #e2e8f0; /* Crisp subtle border */
+  --color-background: #ffffff; /* BBC Pure White */
+  --color-paper: #f8fafc;
+  --color-muted: #f1f5f9;
 
   /* UI Component Colors */
   --color-card: #ffffff;
-  --color-card-foreground: #111827;
-  --color-input: #e5e7eb;
-  --color-ring: #c22026;
-  --color-destructive: #dc2626;
+  --color-card-foreground: #121212;
+  --color-input: #e2e8f0;
+  --color-ring: #bb1919;
+  --color-destructive: #bb1919;
   --color-destructive-foreground: #ffffff;
-  --color-muted-foreground: #4b5563;
+  --color-muted-foreground: #545658;
 }
 
-/* Dark Mode Color Overrides - Premium Space Navy Theme */
+/* Dark Mode Color Overrides - BBC Dark Mode */
 .dark {
-  --color-brand: #f9fafb;
-  --color-accent: #ef4444; /* Clean red — visible on dark surfaces */
-  --color-gold: #e2b960;
-  --color-primary: #f1f5f9; /* slate-100 — high contrast body text */
-  --color-secondary: #94a3b8; /* slate-400 — readable secondary text */
-  --color-border: #334155; /* slate-700 — visible dividers */
-  --color-background: #0f172a; /* slate-900 — deep but not pure black */
-  --color-paper: #1e293b; /* slate-800 — clear card surface lift */
+  --color-brand: #ef4444;
+  --color-accent: #ef4444; /* Vivid Red */
+  --color-gold: #fbbf24;
+  --color-primary: #f8fafc;
+  --color-secondary: #94a3b8;
+  --color-border: #334155;
+  --color-background: #0f172a;
+  --color-paper: #1e293b;
   --color-muted: #1e293b;
 
   /* UI Component Colors - Dark Mode */
   --color-card: #1e293b;
-  --color-card-foreground: #f1f5f9;
+  --color-card-foreground: #f8fafc;
   --color-input: #334155;
   --color-ring: #ef4444;
   --color-destructive: #ef4444;
