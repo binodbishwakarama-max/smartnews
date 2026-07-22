@@ -553,65 +553,6 @@ export default function ArticleFeed({ initialArticles, category, showHero = fals
                     </div>
                 )}
             </div>
-
-            {/* ── Keyboard Shortcuts Floating Helper (X-style) ── */}
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2 font-mono">
-                {showShortcutsHelp ? (
-                    <div className="bg-card border-2 border-brand dark:border-border p-4 shadow-[4px_4px_0px_0px_var(--color-brand)] dark:shadow-[4px_4px_0px_0px_var(--color-border)] rounded-none w-64 max-w-sm animate-fadeIn">
-                        <div className="flex items-center justify-between border-b border-border pb-2 mb-3">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5">
-                                <Keyboard className="w-3.5 h-3.5 text-accent" />
-                                Keyboard Navigation
-                            </span>
-                            <button 
-                                onClick={() => setShowShortcutsHelp(false)}
-                                className="text-secondary hover:text-primary transition-colors cursor-pointer"
-                            >
-                                <X className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-                        <div className="space-y-2 text-[10px]">
-                            <div className="flex justify-between items-center">
-                                <span className="text-secondary">Next Article</span>
-                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">J</kbd>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-secondary">Previous Article</span>
-                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">K</kbd>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-secondary">Open Article</span>
-                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">Enter</kbd>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-secondary">Bookmark Article</span>
-                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">L</kbd>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-secondary">Share Link</span>
-                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">S</kbd>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-secondary">Close Reader</span>
-                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">Esc</kbd>
-                            </div>
-                            <div className="flex justify-between items-center border-t border-border/45 pt-2 mt-2">
-                                <span className="text-secondary">Toggle Shortcuts</span>
-                                <kbd className="px-1.5 py-0.5 bg-muted border border-border text-primary font-bold shadow-sm">?</kbd>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => setShowShortcutsHelp(true)}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border hover:border-brand dark:hover:border-border text-secondary hover:text-primary transition-all duration-200 text-[10px] font-bold tracking-widest uppercase cursor-pointer shadow-sm"
-                        title="Show Keyboard Shortcuts (?)"
-                    >
-                        <Keyboard className="w-3.5 h-3.5 text-accent" />
-                        <span>Shortcuts (?)</span>
-                    </button>
-                )}
-            </div>
         </>
     );
 }
