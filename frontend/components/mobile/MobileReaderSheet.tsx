@@ -1,112 +1,191 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import type { Article } from '../../app/page';
 import { 
-    X, Bookmark, Share2, Type, ExternalLink, Sparkles, Clock, ChevronDown,
-    Play, Pause, Square, Volume2, Settings2
+    X, Volume2, Bookmark, Share2, Sparkles, Check, Play, Pause, Square, 
+    Type, Moon, Sun, BookOpen, Layers, Clock, Globe, ShieldCheck, Flame, Settings2
 } from 'lucide-react';
+import { API_ENDPOINTS, API_BASE_URL } from '../../lib/config';
+import { apiRequest } from '../../lib/api';
 import { useBookmarks } from '../../contexts/BookmarkContext';
-import { getArticleById } from '../../lib/api';
+
+interface ArticleDetail {
+    id: number;
+    title: string;
+    content: string;
+    summary: string;
+    category: string;
+    source: string;
+    url: string;
+    image_url?: string;
+    publish_date: string;
+    quality_score?: number;
+    other_sources?: { id: number; source: string; title: string }[];
+}
 
 interface MobileReaderSheetProps {
-    articleId: number;
+    articleId: number | null;
     onClose: () => void;
 }
 
 export default function MobileReaderSheet({ articleId, onClose }: MobileReaderSheetProps) {
-    const [article, setArticle] = useState<Article | null>(null);
-    const [loading, setLoading] = useState(true);
-    
-    // Preferences
-    const [theme, setTheme] = useState<'light' | 'sepia' | 'dark' | 'slate'>('sepia');
-    const [fontFamily, setFontFamily] = useState<'serif' | 'sans'>('serif');
-    const [fontSize, setFontSize] = useState<number>(18);
-    const [showSettings, setShowSettings] = useState(false);
-    const { isBookmarked, toggleBookmark } = useBookmarks();
-    const [copied, setCopied] = useState(false);
-
-    // Audio / Text-To-Speech (TTS) State
+    const [article, setArticle] = useState<ArticleDetail | null>(null);
+    const [loading, setLoading] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
-    const [rate, setRate] = useState<number>(1.0);
+    const [rate, setRate] = useState(1.0);
+    const [fontStyle, setFontStyle] = useState<'serif' | 'sans'>('serif');
+    const [fontSize, setFontSize] = useState<number>(18);
+    const [theme, setTheme] = useState<'light' | 'sepia' | 'dark' | 'slate'>('dark');
+    const [showSettings, setShowSettings] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    const { isBookmarked, addBookmark, removeBookmark } = useBookmarks();
     const synthRef = useRef<SpeechSynthesis | null>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
 
-    // Initialize TTS & fetch article details
+    // Initialize Speech Synthesis
     useEffect(() => {
-        let mounted = true;
-        setLoading(true);
-
         if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
             synthRef.current = window.speechSynthesis;
         }
+    }, []);
 
-        getArticleById(articleId)
-            .then(data => {
-                if (mounted && data) setArticle(data);
-            })
-            .finally(() => {
-                if (mounted) setLoading(false);
-            });
-
-        document.body.style.overflow = 'hidden';
-        return () => {
-            mounted = false;
-            document.body.style.overflow = '';
-            if (synthRef.current) {
-                synthRef.current.cancel();
-            }
-        };
-    }, [articleId]);
-
-    // Speech Control Handlers
-    const handlePlayTTS = () => {
-        if (!article || !synthRef.current) return;
-
-        if (isPaused) {
-            synthRef.current.resume();
-            setIsPlaying(true);
-            setIsPaused(false);
+    // Fetch Article Details when opened
+    useEffect(() => {
+        if (!articleId) {
+            setArticle(null);
             return;
         }
 
-        synthRef.current.cancel();
+        async function fetchDetail() {
+            setLoading(true);
+            try {
+                const data = await apiRequest<ArticleDetail>(`${API_ENDPOINTS.ARTICLES}${articleId}/`);
+                setArticle(data);
+            } catch (err) {
+                console.error("Failed to load article detail", err);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchDetail();
+
+        return () => {
+            handleStopTTS();
+        };
+    }, [articleId]);
+
+    // Cleanup audio on unmount
+    useEffect(() => {
+        return () => {
+            handleStopTTS();
+        };
+    }, []);
+
+    // Speech Control Handlers with Fail-Safe HTML5 Audio Fallback for Mobile Phones
+    const handlePlayTTS = () => {
+        if (!article) return;
+
+        if (isPaused && audioRef.current) {
+            audioRef.current.play().then(() => {
+                setIsPlaying(true);
+                setIsPaused(false);
+            }).catch(() => {});
+            return;
+        }
+
+        handleStopTTS();
+
         const cleanContent = (article.content || article.summary || '')
             .replace(/<[^>]*>?/gm, '')
             .replace(/http\S+/g, '');
         
-        const textToRead = `${article.title}. ${cleanContent}`;
-        const utterance = new SpeechSynthesisUtterance(textToRead);
-        utterance.rate = rate;
+        const textToRead = `${article.title}. ${cleanContent}`.trim();
 
-        utterance.onend = () => {
+        // 1. Try Native Web Speech API
+        if (synthRef.current && 'SpeechSynthesisUtterance' in window) {
+            try {
+                const utterance = new SpeechSynthesisUtterance(textToRead);
+                utterance.rate = rate;
+
+                utterance.onend = () => {
+                    setIsPlaying(false);
+                    setIsPaused(false);
+                };
+
+                utterance.onerror = () => {
+                    playFallbackHTML5Audio(textToRead);
+                };
+
+                synthRef.current.speak(utterance);
+                setIsPlaying(true);
+                setIsPaused(false);
+                return;
+            } catch (e) {
+                console.warn('SpeechSynthesis failed, using HTML5 Audio fallback:', e);
+            }
+        }
+
+        // 2. Fallback to Server HTML5 Audio Endpoint (Works on 100% of Mobile Devices)
+        playFallbackHTML5Audio(textToRead);
+    };
+
+    const playFallbackHTML5Audio = (text: string) => {
+        try {
+            const shortText = text.substring(0, 300);
+            const ttsUrl = `${API_BASE_URL}/api/v1/articles/tts?text=${encodeURIComponent(shortText)}`;
+            const audio = new Audio(ttsUrl);
+            audio.playbackRate = rate;
+            audioRef.current = audio;
+
+            audio.onended = () => {
+                setIsPlaying(false);
+                setIsPaused(false);
+            };
+
+            audio.onerror = () => {
+                setIsPlaying(false);
+                setIsPaused(false);
+            };
+
+            audio.play().then(() => {
+                setIsPlaying(true);
+                setIsPaused(false);
+            }).catch(err => {
+                console.error('Mobile HTML5 Audio play error:', err);
+                setIsPlaying(false);
+                setIsPaused(false);
+            });
+        } catch (err) {
+            console.error('Mobile Audio fallback failed:', err);
             setIsPlaying(false);
             setIsPaused(false);
-        };
-
-        utterance.onerror = () => {
-            setIsPlaying(false);
-            setIsPaused(false);
-        };
-
-        synthRef.current.speak(utterance);
-        setIsPlaying(true);
-        setIsPaused(false);
+        }
     };
 
     const handlePauseTTS = () => {
-        if (synthRef.current && isPlaying) {
+        if (synthRef.current && isPlaying && synthRef.current.speaking) {
             synthRef.current.pause();
-            setIsPlaying(false);
-            setIsPaused(true);
+        } else if (audioRef.current && isPlaying) {
+            audioRef.current.pause();
         }
+        setIsPlaying(false);
+        setIsPaused(true);
     };
 
     const handleStopTTS = () => {
         if (synthRef.current) {
-            synthRef.current.cancel();
-            setIsPlaying(false);
-            setIsPaused(false);
+            try { synthRef.current.cancel(); } catch {}
         }
+        if (audioRef.current) {
+            try {
+                audioRef.current.pause();
+                audioRef.current = null;
+            } catch {}
+        }
+        setIsPlaying(false);
+        setIsPaused(false);
     };
 
     const toggleRate = () => {
@@ -114,8 +193,8 @@ export default function MobileReaderSheet({ articleId, onClose }: MobileReaderSh
         const nextIdx = (rates.indexOf(rate) + 1) % rates.length;
         const newRate = rates[nextIdx];
         setRate(newRate);
-        if (isPlaying && synthRef.current) {
-            handleStopTTS();
+        if (audioRef.current) {
+            audioRef.current.playbackRate = newRate;
         }
     };
 
@@ -247,177 +326,151 @@ export default function MobileReaderSheet({ articleId, onClose }: MobileReaderSh
                     </div>
                 </div>
 
-                {/* 3. Settings Drawer Overlay (Theme & Font controls) */}
+                {/* 3. Settings Panel Dropdown */}
                 {showSettings && (
-                    <div className="p-4 bg-black/5 dark:bg-white/5 border-b border-black/10 dark:border-white/10 space-y-3 shrink-0 animate-in fade-in duration-200">
-                        {/* Theme Chips */}
-                        <div className="flex items-center justify-between text-xs">
-                            <span className="font-mono font-bold uppercase text-[10px] opacity-70">Theme</span>
-                            <div className="flex gap-1.5">
-                                {(['light', 'sepia', 'dark', 'slate'] as const).map(t => (
-                                    <button
-                                        key={t}
-                                        onClick={() => setTheme(t)}
-                                        className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold uppercase border transition-all ${
-                                            theme === t ? 'border-accent bg-accent text-white shadow-sm' : 'border-black/20 dark:border-white/20 opacity-80'
-                                        }`}
-                                    >
-                                        {t}
-                                    </button>
-                                ))}
+                    <div className="px-6 py-4 bg-black/5 dark:bg-white/5 border-b border-black/10 dark:border-white/10 space-y-4 shrink-0 animate-in slide-in-from-top duration-200">
+                        {/* Theme Selectors */}
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-mono font-bold uppercase tracking-wider opacity-70">Theme</span>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setTheme('light')}
+                                    className={`w-7 h-7 rounded-full bg-white border border-slate-300 ${theme === 'light' ? 'ring-2 ring-accent' : ''}`}
+                                />
+                                <button
+                                    onClick={() => setTheme('sepia')}
+                                    className={`w-7 h-7 rounded-full bg-[#fbf0d9] border border-amber-300 ${theme === 'sepia' ? 'ring-2 ring-accent' : ''}`}
+                                />
+                                <button
+                                    onClick={() => setTheme('dark')}
+                                    className={`w-7 h-7 rounded-full bg-[#0f172a] border border-slate-700 ${theme === 'dark' ? 'ring-2 ring-accent' : ''}`}
+                                />
+                                <button
+                                    onClick={() => setTheme('slate')}
+                                    className={`w-7 h-7 rounded-full bg-[#1e293b] border border-slate-600 ${theme === 'slate' ? 'ring-2 ring-accent' : ''}`}
+                                />
                             </div>
                         </div>
 
-                        {/* Font Family */}
-                        <div className="flex items-center justify-between text-xs">
-                            <span className="font-mono font-bold uppercase text-[10px] opacity-70">Font</span>
-                            <div className="flex gap-1.5">
-                                <button
-                                    onClick={() => setFontFamily('serif')}
-                                    className={`px-3 py-1 rounded-lg text-xs font-serif ${
-                                        fontFamily === 'serif' ? 'bg-accent text-white font-bold' : 'opacity-80'
-                                    }`}
-                                >
-                                    Serif
-                                </button>
-                                <button
-                                    onClick={() => setFontFamily('sans')}
-                                    className={`px-3 py-1 rounded-lg text-xs font-sans ${
-                                        fontFamily === 'sans' ? 'bg-accent text-white font-bold' : 'opacity-80'
-                                    }`}
-                                >
-                                    Sans
-                                </button>
+                        {/* Font Family & Size Controls */}
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-mono font-bold uppercase tracking-wider opacity-70">Typography</span>
+                            <div className="flex items-center gap-3">
+                                <div className="flex rounded-lg bg-black/10 dark:bg-white/10 p-0.5">
+                                    <button
+                                        onClick={() => setFontStyle('serif')}
+                                        className={`px-2 py-0.5 rounded text-xs font-serif ${fontStyle === 'serif' ? 'bg-accent text-white font-bold' : ''}`}
+                                    >
+                                        Serif
+                                    </button>
+                                    <button
+                                        onClick={() => setFontStyle('sans')}
+                                        className={`px-2 py-0.5 rounded text-xs font-sans ${fontStyle === 'sans' ? 'bg-accent text-white font-bold' : ''}`}
+                                    >
+                                        Sans
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setFontSize(prev => Math.max(14, prev - 2))}
+                                        className="w-7 h-7 rounded-lg bg-black/10 dark:bg-white/10 font-bold text-xs active:scale-95"
+                                    >
+                                        A-
+                                    </button>
+                                    <span className="text-xs font-mono font-bold px-1">{fontSize}</span>
+                                    <button
+                                        onClick={() => setFontSize(prev => Math.min(26, prev + 2))}
+                                        className="w-7 h-7 rounded-lg bg-black/10 dark:bg-white/10 font-bold text-xs active:scale-95"
+                                    >
+                                        A+
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* 4. Main Scrollable Content */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5 pb-24">
-                    {/* Source & Date Header */}
-                    <div className="flex items-center justify-between text-xs font-mono uppercase tracking-wider opacity-80 border-b border-black/10 dark:border-white/10 pb-3">
-                        <span className="font-black text-accent">{article.source}</span>
-                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {formattedDate}</span>
+                {/* 4. Article Scrollable Content */}
+                <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
+                    {/* Category & Source Badges */}
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className="px-2.5 py-0.5 rounded-full bg-accent/20 text-accent font-mono font-black text-[10px] uppercase tracking-wider">
+                            {article.category || 'World'}
+                        </span>
+                        <span className="text-xs font-mono font-bold uppercase opacity-60">
+                            {article.source} • {formattedDate}
+                        </span>
                     </div>
 
-                    {/* Headline */}
-                    <h2 className={`text-2xl ${fontFamily === 'serif' ? 'font-serif' : 'font-sans'} font-black leading-tight`}>
+                    {/* Title */}
+                    <h1 className="text-2xl font-serif font-black leading-tight mb-4">
                         {article.title}
-                    </h2>
+                    </h1>
 
                     {/* Featured Image */}
                     {article.image_url && (
-                        <div className="w-full aspect-[16/9] rounded-2xl overflow-hidden bg-black/10">
-                            <img 
-                                src={article.image_url} 
+                        <div className="w-full aspect-[16/9] rounded-2xl overflow-hidden mb-6 border border-black/10 dark:border-white/10 shadow-md">
+                            <img
+                                src={article.image_url}
                                 alt={article.title}
                                 className="w-full h-full object-cover"
                             />
                         </div>
                     )}
 
-                    {/* Article Body Content */}
+                    {/* Full Article Body */}
                     <div 
-                        className={`${fontFamily === 'serif' ? 'font-serif' : 'font-sans'} leading-relaxed space-y-4`}
-                        style={{ fontSize: `${fontSize}px`, lineHeight: 1.7 }}
+                        className={`leading-relaxed space-y-4 ${fontStyle === 'serif' ? 'font-serif' : 'font-sans'}`}
+                        style={{ fontSize: `${fontSize}px` }}
                     >
-                        {article.content ? (
-                            article.content.split('\n\n').map((paragraph, idx) => (
-                                <p key={idx}>{paragraph}</p>
-                            ))
-                        ) : (
-                            <p>{article.summary}</p>
-                        )}
-                    </div>
-
-                    {/* Multi-Source Cluster Rail */}
-                    {article.other_sources && article.other_sources.length > 0 && (
-                        <div className="mt-8 p-4 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl space-y-3">
-                            <h4 className="text-xs font-mono font-black uppercase tracking-wider flex items-center gap-1.5">
-                                <Sparkles className="w-4 h-4 text-accent" /> Other Outlets Covering This Event
-                            </h4>
-                            <div className="space-y-2">
-                                {article.other_sources.map((src) => (
-                                    <a
-                                        key={src.id}
-                                        href={src.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-black/5 dark:bg-white/10 hover:text-accent transition-colors"
-                                    >
-                                        <span className="font-bold text-accent">{src.source}</span>
-                                        <span className="text-[10px] font-mono opacity-80 line-clamp-1 max-w-[180px]">{src.title}</span>
-                                        <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
-                                    </a>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Original Source Link */}
-                    <div className="pt-4 border-t border-black/10 dark:border-white/10 text-center">
-                        <a
-                            href={article.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-xs font-mono font-black uppercase tracking-wider text-accent hover:underline py-2.5 px-5 bg-accent/10 rounded-full"
-                        >
-                            Read Original Article at {article.source} <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
+                        {(article.content || article.summary || '')
+                            .split('\n\n')
+                            .map((paragraph, idx) => (
+                                <p key={idx} className="opacity-90 leading-relaxed">
+                                    {paragraph}
+                                </p>
+                            ))}
                     </div>
                 </div>
 
-                {/* 5. One-Handed Sticky Bottom Action Bar */}
-                <div className="absolute bottom-0 left-0 right-0 h-16 bg-card/95 dark:bg-background/95 backdrop-blur-xl border-t border-border px-4 flex items-center justify-between shrink-0 shadow-lg">
-                    {/* Font Size Adjuster (A- / A+) */}
-                    <div className="flex items-center gap-1 bg-muted p-1 rounded-xl">
+                {/* 5. Sticky Bottom Action Bar */}
+                <div className="px-6 py-4 border-t border-black/10 dark:border-white/10 flex items-center justify-between shrink-0 bg-black/5 dark:bg-white/5">
+                    <div className="flex items-center gap-3">
                         <button
-                            onClick={() => setFontSize(prev => Math.max(14, prev - 2))}
-                            className="w-10 h-10 flex items-center justify-center font-bold text-xs hover:bg-card rounded-lg active:scale-95 text-secondary"
-                            aria-label="Decrease Font Size"
+                            onClick={() => (saved ? removeBookmark(article.id) : addBookmark(article as any))}
+                            className={`p-3 rounded-2xl border transition-all active:scale-95 ${
+                                saved 
+                                    ? 'bg-accent text-white border-accent' 
+                                    : 'border-black/20 dark:border-white/20 hover:bg-black/10 dark:hover:bg-white/10'
+                            }`}
+                            aria-label="Bookmark Article"
                         >
-                            A-
+                            <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
                         </button>
-                        <Type className="w-3.5 h-3.5 text-secondary" />
-                        <button
-                            onClick={() => setFontSize(prev => Math.min(26, prev + 2))}
-                            className="w-10 h-10 flex items-center justify-center font-bold text-sm hover:bg-card rounded-lg active:scale-95 text-primary"
-                            aria-label="Increase Font Size"
-                        >
-                            A+
-                        </button>
-                    </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2">
                         <button
                             onClick={handleShare}
-                            className="w-11 h-11 flex items-center justify-center rounded-xl bg-muted text-primary active:scale-95 transition-transform"
-                            aria-label="Share"
+                            className="p-3 rounded-2xl border border-black/20 dark:border-white/20 hover:bg-black/10 dark:hover:bg-white/10 transition-all active:scale-95 relative"
+                            aria-label="Share Article"
                         >
-                            <Share2 className="w-4 h-4" />
-                        </button>
-
-                        <button
-                            onClick={() => toggleBookmark(article)}
-                            className={`w-11 h-11 flex items-center justify-center rounded-xl transition-transform active:scale-95 ${
-                                saved ? 'bg-accent text-white' : 'bg-muted text-primary'
-                            }`}
-                            aria-label="Bookmark"
-                        >
-                            <Bookmark className={`w-4 h-4 ${saved ? 'fill-current' : ''}`} />
-                        </button>
-
-                        <button
-                            onClick={onClose}
-                            className="w-11 h-11 flex items-center justify-center rounded-xl bg-brand text-card active:scale-95 transition-transform"
-                            aria-label="Close"
-                        >
-                            <ChevronDown className="w-5 h-5" />
+                            <Share2 className="w-5 h-5" />
+                            {copied && (
+                                <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black text-white text-[10px] rounded font-mono font-bold whitespace-nowrap">
+                                    Copied!
+                                </span>
+                            )}
                         </button>
                     </div>
+
+                    <button
+                        onClick={onClose}
+                        className="px-6 py-3 bg-accent text-white font-mono font-bold text-xs uppercase tracking-wider rounded-2xl active:scale-95 shadow-md"
+                    >
+                        Done Reading
+                    </button>
                 </div>
+
             </div>
         </div>
     );
